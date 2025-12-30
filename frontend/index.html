@@ -1,0 +1,2848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FedEx - Tracking, Shipping, and Locations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* FedEx Custom Colors */
+        :root {
+            --fedex-purple: #4D148C;
+            --fedex-orange: #FF6200;
+            --fedex-grey: #FAFAFA;
+        }
+        .bg-fedex-purple { background-color: var(--fedex-purple); }
+        .text-fedex-purple { color: var(--fedex-purple); }
+        .bg-fedex-orange { background-color: var(--fedex-orange); }
+        .text-fedex-orange { color: var(--fedex-orange); }
+        .border-fedex-purple { border-color: var(--fedex-purple); }
+        .hover\:bg-fedex-purple:hover { background-color: var(--fedex-purple); }
+        
+        body { font-family: 'Roboto', sans-serif; }
+
+        /* Animation Classes */
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        .slide-down { animation: slideDown 0.3s ease-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Timeline Styles */
+        .timeline-item {
+            position: relative;
+            padding-left: 2rem;
+            padding-bottom: 2rem;
+            border-left: 2px solid #e5e7eb;
+        }
+        .timeline-item:last-child { border-left: none; }
+        .timeline-dot {
+            position: absolute;
+            left: -9px;
+            top: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: white;
+            border: 4px solid #e5e7eb;
+        }
+        .timeline-item.active .timeline-dot {
+            border-color: var(--fedex-orange);
+            background-color: var(--fedex-orange);
+        }
+        .timeline-item.completed .timeline-dot {
+            border-color: var(--fedex-purple);
+            background-color: var(--fedex-purple);
+        }
+        .timeline-item.completed { border-left-color: var(--fedex-purple); }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        /* Admin Table Styles */
+        .admin-table th { text-align: left; padding: 12px; background: #f3f4f6; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+        .admin-table td { padding: 12px; border-top: 1px solid #e5e7eb; }
+        .admin-table tr:hover { background: #f9fafb; }
+        
+        /* Sidebar Active State */
+        .sidebar-item.active {
+            background-color: var(--fedex-purple);
+            color: white;
+            border-color: var(--fedex-purple);
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #ccc; 
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #999; 
+        }
+
+        /* Dark Mode Overrides */
+        .dark body { background-color: #111827; color: #f3f4f6; }
+        .dark .bg-white { background-color: #1f2937; color: #f3f4f6; }
+        .dark .bg-gray-50 { background-color: #111827; }
+        .dark .bg-gray-100 { background-color: #374151; color: #f3f4f6; }
+        .dark .text-gray-800 { color: #f9fafb; }
+        .dark .text-gray-700 { color: #e5e7eb; }
+        .dark .text-gray-600 { color: #d1d5db; }
+        .dark .text-gray-500 { color: #9ca3af; }
+        .dark .border-gray-200, .dark .border-gray-300 { border-color: #374151; }
+        .dark input, .dark select { background-color: #374151; border-color: #4b5563; color: white; }
+        .dark .modal-overlay .bg-white { background-color: #1f2937; }
+        .dark nav { background-color: #310f5d; } /* Slightly darker purple */
+        
+        /* Dark Mode Admin Table */
+        .dark .admin-table th { background: #374151; border-bottom-color: #4b5563; color: #e5e7eb; }
+        .dark .admin-table td { border-top-color: #4b5563; color: #d1d5db; }
+        .dark .admin-table tr:hover { background: #1f2937; }
+    </style>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+      import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDKJ1lwRWQC3eHyWYbrx3WpdXCrnKT1yGs",
+        authDomain: "fedex-37e89.firebaseapp.com",
+        projectId: "fedex-37e89",
+        storageBucket: "fedex-37e89.firebasestorage.app",
+        messagingSenderId: "404051824308",
+        appId: "1:404051824308:web:13c12e1d7302993648d1e1",
+        measurementId: "G-7PWE0EMDVH"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
+      const auth = getAuth(app);
+
+      // Expose Firebase Auth to global scope for the main script
+      window.firebaseAuth = {
+        auth,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signOut,
+        updateProfile,
+        GoogleAuthProvider,
+        signInWithPopup
+      };
+
+      // Auth State Observer to handle UI updates automatically
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // Update global state
+            window.isLoggedIn = true;
+            window.currentUser = user.displayName || user.email;
+            // Simple admin check (replace with your specific admin email)
+            window.isAdmin = user.email === 'admin@fedex.com'; 
+            
+            // Update UI
+            document.getElementById('authButtons').classList.add('hidden');
+            document.getElementById('mobileAuthLinks').classList.add('hidden');
+            const userAccount = document.getElementById('userAccount');
+            userAccount.classList.remove('hidden');
+            userAccount.classList.add('flex');
+            
+            const nameDisplay = document.getElementById('userNameDisplay');
+            if(nameDisplay) nameDisplay.textContent = window.currentUser;
+            
+            if (window.isAdmin) {
+                document.getElementById('adminBadge').classList.remove('hidden');
+                document.getElementById('adminPanelBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('adminBadge').classList.add('hidden');
+                document.getElementById('adminPanelBtn').classList.add('hidden');
+            }
+        } else {
+            window.isLoggedIn = false;
+            window.isAdmin = false;
+            window.currentUser = null;
+            
+            document.getElementById('authButtons').classList.remove('hidden');
+            document.getElementById('mobileAuthLinks').classList.remove('hidden');
+            document.getElementById('userAccount').classList.add('hidden');
+            document.getElementById('userAccount').classList.remove('flex');
+            document.getElementById('adminPanelBtn').classList.add('hidden');
+            document.getElementById('adminPanelModal').classList.add('hidden');
+        }
+      });
+    </script>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen relative">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-24 right-5 z-[70] flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="hidden fixed inset-0 z-[60] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-hidden slide-down">
+            <div class="bg-fedex-purple p-4 flex justify-between items-center text-white">
+                <h3 id="authModalTitle" class="font-bold text-lg">Log In</h3>
+                <button onclick="closeModal('loginModal')" class="hover:text-gray-300"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <button type="button" onclick="handleGoogleLogin()" class="w-full bg-white border border-gray-300 text-gray-700 font-bold py-2 rounded hover:bg-gray-50 transition flex items-center justify-center mb-4 shadow-sm">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5 mr-2" alt="Google">
+                    Sign in with Google
+                </button>
+                <div class="relative mb-4">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300"></div></div>
+                    <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-500">Or with email</span></div>
+                </div>
+
+                <form onsubmit="handleAuth(event)" class="space-y-4">
+                    <div id="signupNameGroup" class="hidden">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Full Name</label>
+                        <input type="text" id="signupName" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-fedex-purple" placeholder="John Doe">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email Address</label>
+                        <input type="text" id="loginEmail" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-fedex-purple" placeholder="user@example.com" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <input type="password" id="loginPassword" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-fedex-purple" placeholder="••••••" required>
+                    </div>
+                    <button type="submit" id="authSubmitBtn" class="w-full bg-fedex-orange text-white font-bold py-2 rounded hover:bg-orange-600 transition">Log In</button>
+                    <div class="text-center mt-4">
+                        <p class="text-sm text-gray-600">
+                            <span id="authToggleText">Don't have an account?</span>
+                            <a href="#" onclick="toggleAuthMode()" id="authToggleLink" class="text-fedex-purple font-bold hover:underline">Sign Up</a>
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Modal (Dynamic Content) -->
+    <div id="serviceModal" class="hidden fixed inset-0 z-[60] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg overflow-hidden slide-down">
+            <div class="bg-gray-100 p-4 flex justify-between items-center border-b">
+                <h3 id="serviceModalTitle" class="font-bold text-xl text-fedex-purple">Service</h3>
+                <button onclick="closeModal('serviceModal')" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="serviceModalContent" class="p-6">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="bg-gray-50 p-4 border-t text-right">
+                <button onclick="closeModal('serviceModal')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Close</button>
+                <button onclick="simulateAction()" class="px-4 py-2 bg-fedex-purple text-white rounded hover:bg-purple-800 ml-2">Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal (Generic) -->
+    <div id="infoModal" class="hidden fixed inset-0 z-[60] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden slide-down">
+            <div class="bg-fedex-purple p-4 flex justify-between items-center text-white shrink-0">
+                <h3 id="infoModalTitle" class="font-bold text-xl">Information</h3>
+                <button onclick="closeModal('infoModal')" class="hover:text-gray-300"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="infoModalContent" class="p-6 overflow-y-auto custom-scrollbar">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="bg-gray-50 p-4 border-t text-right shrink-0">
+                <button onclick="closeModal('infoModal')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div id="searchModal" class="hidden fixed inset-0 z-[60] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg overflow-hidden slide-down">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-700">Search FedEx</h3>
+                <button onclick="closeModal('searchModal')" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="globalSearchInput" class="w-full border border-gray-300 p-3 rounded focus:outline-none focus:border-fedex-purple" placeholder="Search or Enter Tracking ID..." onkeypress="if(event.key === 'Enter') performSearch()">
+                    <button onclick="performSearch()" class="bg-fedex-purple text-white px-6 rounded hover:bg-purple-800 font-bold">Search</button>
+                </div>
+                <div id="searchResults" class="hidden">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Results</h4>
+                    <div id="searchResultsContent" class="text-sm text-gray-600"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD MODAL -->
+    <div id="adminPanelModal" class="hidden fixed inset-0 z-[60] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-6xl h-[90vh] overflow-hidden flex flex-col slide-down">
+            <!-- Header -->
+            <div class="bg-gray-900 p-4 flex justify-between items-center text-white shrink-0">
+                <div class="flex items-center space-x-3">
+                    <span class="bg-fedex-orange text-xs font-bold px-2 py-1 rounded">ADMIN SYSTEM</span>
+                    <h3 class="font-bold text-lg hidden md:block">Central Control Panel</h3>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-xs text-gray-400" id="systemTime"></span>
+                    <button onclick="closeModal('adminPanelModal')" class="hover:text-gray-300"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            
+            <!-- Dashboard Content -->
+            <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+                <!-- Sidebar (Responsive) -->
+                <div class="w-full md:w-64 bg-gray-100 border-b md:border-b-0 md:border-r border-gray-200 p-2 md:p-4 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto shrink-0 gap-2 md:gap-0">
+                    <div class="hidden md:block text-xs font-bold text-gray-400 uppercase mb-2">Modules</div>
+                    
+                    <div id="nav-dashboard" onclick="switchAdminView('dashboard')" class="sidebar-item rounded p-2 cursor-pointer font-medium text-gray-700 hover:bg-white transition flex items-center whitespace-nowrap">
+                        <i class="fas fa-chart-line w-6"></i> Dashboard
+                    </div>
+                    <div id="nav-shipments" onclick="switchAdminView('shipments')" class="sidebar-item active rounded p-2 cursor-pointer font-medium text-gray-700 hover:bg-white transition flex items-center whitespace-nowrap">
+                        <i class="fas fa-box w-6"></i> Shipments
+                    </div>
+                    <div id="nav-users" onclick="switchAdminView('users')" class="sidebar-item rounded p-2 cursor-pointer font-medium text-gray-700 hover:bg-white transition flex items-center whitespace-nowrap">
+                        <i class="fas fa-users w-6"></i> Users
+                    </div>
+                    <div id="nav-locations" onclick="switchAdminView('locations')" class="sidebar-item rounded p-2 cursor-pointer font-medium text-gray-700 hover:bg-white transition flex items-center whitespace-nowrap">
+                        <i class="fas fa-map-marked-alt w-6"></i> Locations
+                    </div>
+                    <div id="nav-settings" onclick="switchAdminView('settings')" class="sidebar-item rounded p-2 cursor-pointer font-medium text-gray-700 hover:bg-white transition flex items-center whitespace-nowrap">
+                        <i class="fas fa-cogs w-6"></i> Settings
+                    </div>
+                    <div id="nav-audit" onclick="switchAdminView('audit')" class="sidebar-item rounded p-2 cursor-pointer font-medium text-gray-700 hover:bg-white transition flex items-center whitespace-nowrap">
+                        <i class="fas fa-history w-6"></i> Audit Logs
+                    </div>
+                    
+                    <div class="hidden md:block mt-auto pt-4 border-t border-gray-200">
+                        <div class="text-xs text-gray-500">System Status: <span class="text-green-600 font-bold">Online</span></div>
+                        <button onclick="resetToDefaults()" class="mt-2 text-xs text-red-500 hover:underline">Reset Data</button>
+                    </div>
+                </div>
+
+                <!-- Main View Area -->
+                <div class="flex-grow p-4 md:p-6 overflow-y-auto bg-gray-50 relative custom-scrollbar">
+                    
+                    <!-- 0. DASHBOARD VIEW -->
+                    <div id="adminDashboardView" class="admin-view hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center bg-white px-3 py-2 rounded shadow-sm border border-gray-200">
+                                    <span class="text-xs font-bold text-gray-500 mr-2 uppercase">Maintenance</span>
+                                    <button id="dashMaintenanceToggle" onclick="toggleMaintenanceMode()" class="w-10 h-5 bg-gray-300 rounded-full relative transition-colors duration-300 focus:outline-none"><div class="w-3 h-3 bg-white rounded-full absolute top-1 left-1 transition-transform duration-300 shadow-sm"></div></button>
+                                </div>
+                                <button onclick="downloadDashboardReport()" class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition shadow text-sm"><i class="fas fa-file-pdf mr-2"></i> Download Report</button>
+                                <div id="dashboardClock" class="text-xl font-mono text-fedex-purple font-bold bg-white px-4 py-2 rounded shadow-sm border border-gray-200"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <!-- Shipments Card -->
+                            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-fedex-purple">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-sm text-gray-500 uppercase font-bold">Total Shipments</p>
+                                        <h3 class="text-3xl font-bold text-gray-800" id="dashShipmentCount">0</h3>
+                                    </div>
+                                    <div class="text-fedex-purple text-3xl"><i class="fas fa-box"></i></div>
+                                </div>
+                            </div>
+                            <!-- Users Card -->
+                            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-fedex-orange">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-sm text-gray-500 uppercase font-bold">Active Users</p>
+                                        <h3 class="text-3xl font-bold text-gray-800" id="dashUserCount">0</h3>
+                                    </div>
+                                    <div class="text-fedex-orange text-3xl"><i class="fas fa-users"></i></div>
+                                </div>
+                            </div>
+                            <!-- Errors Card -->
+                            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-sm text-gray-500 uppercase font-bold">Recent Exceptions</p>
+                                        <h3 class="text-3xl font-bold text-gray-800" id="dashErrorCount">0</h3>
+                                    </div>
+                                    <div class="text-red-500 text-3xl"><i class="fas fa-exclamation-triangle"></i></div>
+                                </div>
+                            </div>
+                            <!-- Avg Delivery Time Card -->
+                            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-sm text-gray-500 uppercase font-bold">Avg. Delivery Time</p>
+                                        <h3 class="text-3xl font-bold text-gray-800"><span id="dashAvgTime">0</span> <span class="text-sm font-normal text-gray-500">hours</span></h3>
+                                    </div>
+                                    <div class="text-blue-500 text-3xl"><i class="fas fa-clock"></i></div>
+                                </div>
+                            </div>
+                            <!-- Revenue Card -->
+                            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-sm text-gray-500 uppercase font-bold">Total Revenue</p>
+                                        <h3 class="text-3xl font-bold text-gray-800">$<span id="dashRevenue">0</span></h3>
+                                    </div>
+                                    <div class="text-green-500 text-3xl"><i class="fas fa-dollar-sign"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                <h3 class="font-bold text-gray-700 mb-4">Shipment Status Overview</h3>
+                                <div class="h-64 w-full relative">
+                                    <canvas id="shipmentStatusChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                <h3 class="font-bold text-gray-700 mb-4">Shipments by Service</h3>
+                                <div class="h-64 w-full relative">
+                                    <canvas id="shipmentServiceChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-gray-700">New Shipments (Last 7 Days)</h3>
+                                    <button onclick="downloadChart('shipmentHistoryChart')" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded border border-gray-300 transition">
+                                        <i class="fas fa-download mr-1"></i> Save
+                                    </button>
+                                </div>
+                                <div class="h-64 w-full relative">
+                                    <canvas id="shipmentHistoryChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Health & Top Users -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                <h3 class="font-bold text-gray-700 mb-4">System Health</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="flex justify-between text-sm mb-1"><span>CPU Load</span><span id="healthCpu">0%</span></div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2"><div id="healthCpuBar" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div></div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-sm mb-1"><span>Memory Usage</span><span id="healthMem">0%</span></div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2"><div id="healthMemBar" class="bg-purple-500 h-2 rounded-full" style="width: 0%"></div></div>
+                                    </div>
+                                    <div class="pt-4 border-t border-gray-100">
+                                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Server Load History</h4>
+                                        <div class="h-32 w-full relative"><canvas id="serverLoadChart"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                <h3 class="font-bold text-gray-700 mb-4">Top Active Users</h3>
+                                <ul id="topUsersList" class="space-y-2 text-sm"></ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Activity Feed -->
+                        <div class="bg-white rounded shadow overflow-hidden border border-gray-200 mb-8">
+                            <div class="bg-gray-50 p-4 border-b border-gray-200"><h3 class="font-bold text-gray-700">Recent System Activity</h3></div>
+                            <div id="dashActivityFeed" class="divide-y divide-gray-100">
+                                <!-- Content injected via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity / Errors Table -->
+                        <div class="bg-white rounded shadow overflow-hidden border border-gray-200">
+                            <div class="bg-gray-50 p-4 border-b border-gray-200">
+                                <h3 class="font-bold text-gray-700">Shipment Exceptions</h3>
+                            </div>
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-gray-50 text-gray-500">
+                                    <tr>
+                                        <th class="p-3">Tracking ID</th>
+                                        <th class="p-3">Status Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashErrorTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 1. SHIPMENTS VIEW -->
+                    <div id="adminShipmentsView" class="admin-view">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800">Shipment Management</h2>
+                                <p class="text-sm text-gray-500">Manage packages, status updates, and tracking.</p>
+                            </div>
+                            <button onclick="openEditModal()" class="bg-fedex-purple text-white px-4 py-2 rounded hover:bg-purple-800 transition shadow w-full md:w-auto">
+                                <i class="fas fa-plus mr-2"></i> New Shipment
+                            </button>
+                        </div>
+                        <div class="mb-4">
+                            <input type="text" id="shipmentSearchInput" onkeyup="handleShipmentSearch()" placeholder="Search by Tracking ID..." class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
+                        </div>
+                        <div class="bg-white rounded shadow overflow-x-auto border border-gray-200">
+                            <table class="w-full admin-table text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Tracking ID</th>
+                                        <th>Status</th>
+                                        <th class="hidden sm:table-cell">Location</th>
+                                        <th class="hidden sm:table-cell">Delivery</th>
+                                        <th class="text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center mt-4 bg-white p-3 rounded shadow border border-gray-200">
+                            <span class="text-sm text-gray-600" id="shipmentPageInfo">Page 1 of 1</span>
+                            <div class="space-x-2">
+                                <button onclick="changeShipmentPage(-1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" id="shipmentPrevBtn">Previous</button>
+                                <button onclick="changeShipmentPage(1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" id="shipmentNextBtn">Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. USERS VIEW -->
+                    <div id="adminUsersView" class="admin-view hidden">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800">User Management</h2>
+                                <p class="text-sm text-gray-500">Manage customer accounts and privileges.</p>
+                            </div>
+                            <button onclick="openUserModal()" class="bg-fedex-purple text-white px-4 py-2 rounded hover:bg-purple-800 transition shadow w-full md:w-auto">
+                                <i class="fas fa-user-plus mr-2"></i> Add User
+                            </button>
+                        </div>
+                        <div class="bg-white rounded shadow overflow-x-auto border border-gray-200">
+                            <table class="w-full admin-table text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Full Name</th>
+                                        <th class="hidden sm:table-cell">Email</th>
+                                        <th>Role</th>
+                                        <th class="text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminUsersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 3. LOCATIONS VIEW -->
+                    <div id="adminLocationsView" class="admin-view hidden">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800">Locations Registry</h2>
+                                <p class="text-sm text-gray-500">Manage operational facilities and retail stores.</p>
+                            </div>
+                            <button onclick="openLocationModal()" class="bg-fedex-purple text-white px-4 py-2 rounded hover:bg-purple-800 transition shadow w-full md:w-auto">
+                                <i class="fas fa-map-pin mr-2"></i> Add Location
+                            </button>
+                        </div>
+                        <div class="bg-white rounded shadow overflow-x-auto border border-gray-200">
+                            <table class="w-full admin-table text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th class="hidden sm:table-cell">Address</th>
+                                        <th>Type</th>
+                                        <th class="text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminLocationsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 4. SETTINGS VIEW -->
+                    <div id="adminSettingsView" class="admin-view hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800">System Settings</h2>
+                                <p class="text-sm text-gray-500">Configure global parameters.</p>
+                            </div>
+                            <button id="saveSettingsBtn" onclick="saveSettings()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition shadow">
+                                <i class="fas fa-save mr-2"></i> Save
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- General Config -->
+                            <div class="bg-white p-6 rounded shadow border border-gray-200">
+                                <h3 class="font-bold text-lg mb-4 text-fedex-purple border-b pb-2">General Configuration</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-gray-700">Maintenance Mode</label>
+                                        <input type="checkbox" id="setting-maintenance" class="w-5 h-5 text-fedex-purple">
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-gray-700">Allow New Signups</label>
+                                        <input type="checkbox" id="setting-signups" class="w-5 h-5 text-fedex-purple">
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-gray-700">Public API Access</label>
+                                        <input type="checkbox" id="setting-api" class="w-5 h-5 text-fedex-purple">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notifications -->
+                            <div class="bg-white p-6 rounded shadow border border-gray-200">
+                                <h3 class="font-bold text-lg mb-4 text-fedex-purple border-b pb-2">Notifications</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-gray-700">Email Alerts (System)</label>
+                                        <input type="checkbox" id="setting-email" class="w-5 h-5 text-fedex-purple">
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-gray-700">SMS Gateways</label>
+                                        <input type="checkbox" id="setting-sms" class="w-5 h-5 text-fedex-purple">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Appearance -->
+                            <div class="bg-white p-6 rounded shadow border border-gray-200">
+                                <h3 class="font-bold text-lg mb-4 text-fedex-purple border-b pb-2">Appearance</h3>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm text-gray-600 mb-1">System Announcement Banner</label>
+                                        <input type="text" id="setting-banner" class="w-full border p-2 rounded" placeholder="e.g. System maintenance scheduled...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. AUDIT LOGS VIEW -->
+                    <div id="adminAuditView" class="admin-view hidden">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800">Audit Logs</h2>
+                                <p class="text-sm text-gray-500">Track administrative actions.</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <div class="flex items-center space-x-1 bg-white border border-gray-300 rounded px-2 py-1">
+                                    <input type="date" id="auditStartDate" onchange="handleAuditSearch()" class="text-sm outline-none text-gray-600 bg-transparent">
+                                    <span class="text-gray-400">-</span>
+                                    <input type="date" id="auditEndDate" onchange="handleAuditSearch()" class="text-sm outline-none text-gray-600 bg-transparent">
+                                </div>
+                                <input type="text" id="auditSearchInput" onkeyup="handleAuditSearch()" placeholder="Search logs..." class="border p-2 rounded text-sm focus:border-fedex-purple outline-none">
+                                <button id="auditSortBtn" onclick="toggleAuditSort()" class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded hover:bg-gray-50 transition shadow text-sm">
+                                    <i class="fas fa-sort-amount-down mr-1"></i> Newest
+                                </button>
+                                <button onclick="printAuditLogs()" class="bg-gray-700 text-white px-3 py-2 rounded hover:bg-gray-800 transition shadow text-sm">
+                                    <i class="fas fa-print mr-1"></i> Print
+                                </button>
+                                <button onclick="exportAuditLogsToCSV()" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition shadow text-sm">
+                                    <i class="fas fa-file-csv mr-1"></i> CSV
+                                </button>
+                                <button onclick="clearAuditLogs()" class="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700 transition shadow text-sm">
+                                    <i class="fas fa-trash-alt mr-1"></i> Clear
+                                </button>
+                                <button onclick="renderAuditLogsTable()" class="bg-gray-200 text-gray-700 px-3 py-2 rounded hover:bg-gray-300 transition shadow text-sm"><i class="fas fa-sync-alt"></i></button>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded shadow overflow-x-auto border border-gray-200">
+                            <table class="w-full admin-table text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>User</th>
+                                        <th>Action</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminAuditTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center mt-4 bg-white p-3 rounded shadow border border-gray-200">
+                            <span class="text-sm text-gray-600" id="auditPageInfo">Page 1 of 1</span>
+                            <div class="space-x-2">
+                                <button onclick="changeAuditPage(-1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" id="auditPrevBtn">Previous</button>
+                                <button onclick="changeAuditPage(1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" id="auditNextBtn">Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS FOR ADMIN ACTIONS -->
+    
+    <!-- 1. Edit Shipment Modal -->
+    <div id="adminEditModal" class="hidden fixed inset-0 z-[65] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden slide-down">
+            <div class="bg-fedex-purple p-3 text-white font-bold flex justify-between shrink-0">
+                <span id="editModalTitle">Edit Shipment</span>
+                <button onclick="closeModal('adminEditModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                <input type="hidden" id="editOriginalId">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tracking ID</label>
+                    <input type="text" id="editTrackingId" class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                        <select id="editStatus" class="w-full border p-2 rounded outline-none" onchange="updateStatusColorPreview()">
+                            <option value="delivered">Delivered</option>
+                            <option value="in_transit">In Transit</option>
+                            <option value="out_for_delivery">Out for Delivery</option>
+                            <option value="exception">Exception</option>
+                            <option value="created">Pending</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Progress (%)</label>
+                        <input type="number" id="editProgress" class="w-full border p-2 rounded outline-none" min="0" max="100">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Current Location</label>
+                    <input type="text" id="editLocation" class="w-full border p-2 rounded focus:border-fedex-purple outline-none" placeholder="e.g. Memphis, TN">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Service Type</label>
+                    <input type="text" id="editService" class="w-full border p-2 rounded focus:border-fedex-purple outline-none" placeholder="e.g. FedEx Ground">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Weight</label>
+                        <input type="text" id="editWeight" class="w-full border p-2 rounded focus:border-fedex-purple outline-none" placeholder="e.g. 5.0 lbs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pieces</label>
+                        <input type="number" id="editPieces" class="w-full border p-2 rounded focus:border-fedex-purple outline-none" min="1">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Dimensions</label>
+                    <input type="text" id="editDimensions" class="w-full border p-2 rounded focus:border-fedex-purple outline-none" placeholder="e.g. 12x10x6 in.">
+                </div>
+                <hr class="border-gray-200">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Delivery Date</label>
+                    <input type="datetime-local" id="editDate" class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
+                </div>
+                <hr class="border-gray-200">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-bold text-gray-500 uppercase">Travel History</label>
+                        <button onclick="addTimelineEvent()" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"><i class="fas fa-plus"></i> Add Event</button>
+                    </div>
+                    <div id="editTimelineContainer" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar border p-2 rounded bg-gray-50"></div>
+                </div>
+                <div class="flex justify-end space-x-2 pt-4 border-t">
+                    <button onclick="closeModal('adminEditModal')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onclick="saveShipment()" class="px-4 py-2 bg-fedex-orange text-white rounded hover:bg-orange-600 font-bold">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. User Modal -->
+    <div id="adminUserModal" class="hidden fixed inset-0 z-[65] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden slide-down">
+            <div class="bg-fedex-purple p-3 text-white font-bold flex justify-between">
+                <span id="userModalTitle">Add User</span>
+                <button onclick="closeModal('adminUserModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="userIdInput">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
+                    <input type="text" id="userNameInput" class="w-full border p-2 rounded focus:border-fedex-purple">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
+                    <input type="email" id="userEmailInput" class="w-full border p-2 rounded focus:border-fedex-purple">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Role</label>
+                    <select id="userRoleInput" class="w-full border p-2 rounded">
+                        <option value="Customer">Customer</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Support">Support Agent</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2 pt-4 border-t">
+                    <button onclick="closeModal('adminUserModal')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onclick="saveUser()" class="px-4 py-2 bg-fedex-orange text-white rounded hover:bg-orange-600 font-bold">Save User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Location Modal -->
+    <div id="adminLocationModal" class="hidden fixed inset-0 z-[65] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden slide-down">
+            <div class="bg-fedex-purple p-3 text-white font-bold flex justify-between">
+                <span id="locModalTitle">Add Location</span>
+                <button onclick="closeModal('adminLocationModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="locIdInput">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Location Name</label>
+                    <input type="text" id="locNameInput" class="w-full border p-2 rounded focus:border-fedex-purple" placeholder="e.g. North Hub">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Address</label>
+                    <input type="text" id="locAddressInput" class="w-full border p-2 rounded focus:border-fedex-purple" placeholder="e.g. 123 Main St, City, ST">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
+                    <select id="locTypeInput" class="w-full border p-2 rounded">
+                        <option value="Distribution Center">Distribution Center</option>
+                        <option value="Retail Store">Retail Store</option>
+                        <option value="Drop Box">Drop Box</option>
+                        <option value="Sort Facility">Sort Facility</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2 pt-4 border-t">
+                    <button onclick="closeModal('adminLocationModal')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onclick="saveLocation()" class="px-4 py-2 bg-fedex-orange text-white rounded hover:bg-orange-600 font-bold">Save Location</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bg-fedex-purple text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-20 items-center">
+                <div class="flex items-center space-x-8">
+                    <!-- Logo -->
+                    <a href="#" onclick="window.location.reload()" class="text-3xl font-bold italic tracking-tighter flex items-center">
+                        <span class="text-white">Fed</span><span class="text-fedex-orange">Ex</span>
+                    </a>
+                    <!-- Desktop Menu -->
+                    <div class="hidden md:flex space-x-6 text-sm font-medium">
+                        <a href="#" onclick="showServiceModal('shipping')" class="hover:text-gray-200 transition">Shipping</a>
+                        <a href="#" onclick="scrollToSection('tracking-section')" class="hover:text-gray-200 transition">Tracking</a>
+                        <a href="#" onclick="showServiceModal('design')" class="hover:text-gray-200 transition">Design & Print</a>
+                        <a href="#" onclick="showServiceModal('locations')" class="hover:text-gray-200 transition">Locations</a>
+                        <a href="#" onclick="showInfoModal('support')" class="hover:text-gray-200 transition">Support</a>
+                    </div>
+                </div>
+                <!-- Right Side Actions -->
+                <div class="flex items-center space-x-4">
+                    <div id="authButtons" class="hidden md:flex items-center space-x-4">
+                        <a href="#" onclick="openModal('loginModal')" class="text-sm font-medium hover:text-gray-200">Sign Up</a>
+                        <a href="#" onclick="openModal('loginModal')" class="text-sm font-medium hover:text-gray-200">Log In</a>
+                    </div>
+                    
+                    <!-- Admin / User Account Display -->
+                    <div id="userAccount" class="hidden flex items-center space-x-3">
+                         <div id="adminBadge" class="hidden bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Admin</div>
+                         <div class="flex items-center space-x-2 cursor-pointer" onclick="handleLogout()">
+                            <div class="w-8 h-8 rounded-full bg-fedex-orange flex items-center justify-center text-xs font-bold text-white">JD</div>
+                            <span class="text-sm font-medium" id="userNameDisplay">My Account</span>
+                        </div>
+                    </div>
+                    
+                    <button id="adminPanelBtn" onclick="openModal('adminPanelModal'); renderAdminTable();" class="hidden bg-gray-900 text-white text-xs font-bold px-3 py-2 rounded hover:bg-gray-700 transition shadow-md border border-gray-700">
+                        <i class="fas fa-tachometer-alt mr-1"></i> <span class="hidden sm:inline">Dashboard</span>
+                    </button>
+
+                    <button onclick="toggleMobileMenu()" class="p-2 md:hidden hover:bg-purple-800 rounded">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <button onclick="openModal('searchModal')" class="p-2 hover:bg-purple-800 rounded">
+                        <i class="fas fa-search text-xl"></i>
+                    </button>
+                    <button onclick="toggleDarkMode()" class="p-2 hover:bg-purple-800 rounded" title="Toggle Dark Mode">
+                        <i id="darkModeIcon" class="fas fa-moon text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="hidden md:hidden bg-white text-gray-800 border-t border-gray-200 shadow-xl absolute w-full left-0 animate-fade-in">
+            <div class="flex flex-col p-4 space-y-4 font-medium">
+                <a href="#" onclick="showServiceModal('shipping'); toggleMobileMenu()" class="block px-2 py-1 hover:bg-gray-100 rounded">Shipping</a>
+                <a href="#" onclick="scrollToSection('tracking-section'); toggleMobileMenu()" class="block px-2 py-1 hover:bg-gray-100 rounded">Tracking</a>
+                <a href="#" onclick="showServiceModal('design'); toggleMobileMenu()" class="block px-2 py-1 hover:bg-gray-100 rounded">Design & Print</a>
+                <a href="#" onclick="showServiceModal('locations'); toggleMobileMenu()" class="block px-2 py-1 hover:bg-gray-100 rounded">Locations</a>
+                <a href="#" onclick="toggleDarkMode(); toggleMobileMenu()" class="block px-2 py-1 hover:bg-gray-100 rounded flex justify-between items-center">
+                    <span>Dark Mode</span>
+                    <i class="fas fa-moon"></i>
+                </a>
+                <hr>
+                <div id="mobileAuthLinks">
+                    <a href="#" onclick="openModal('loginModal'); toggleMobileMenu()" class="block px-2 py-1 text-fedex-purple font-bold">Log In / Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="relative bg-fedex-purple h-[500px]" style="background-image: url('https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80'); background-size: cover; background-position: center;">
+        <div class="absolute inset-0 bg-gradient-to-r from-[rgba(77,20,140,0.95)] to-[rgba(77,20,140,0.7)]"></div>
+        <div class="relative max-w-7xl mx-auto px-4 h-full flex flex-col justify-center items-center text-center md:items-start md:text-left pt-10 pb-20">
+            <h1 class="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight drop-shadow-lg">
+                Where now meets next.
+            </h1>
+            <p class="text-xl text-gray-100 mb-8 max-w-xl drop-shadow-md">
+                Fast, reliable shipping and tracking solutions for your business and personal needs.
+            </p>
+            <button onclick="showServiceModal('shipping')" class="bg-fedex-orange text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-orange-600 hover:scale-105 transition transform">
+                Create a Shipment
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow -mt-24 relative z-10 px-4 mb-12">
+        <div class="max-w-4xl mx-auto">
+            
+            <!-- Tracking Card -->
+            <div id="tracking-section" class="bg-white rounded-lg shadow-2xl p-6 md:p-8 transform transition hover:shadow-3xl">
+                <h2 class="text-2xl font-light text-gray-800 mb-6 uppercase tracking-wide flex items-center">
+                    <i class="fas fa-box-open mr-3 text-fedex-purple"></i> Track Your Shipment
+                </h2>
+                
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-grow relative">
+                        <input type="text" id="trackingInput" 
+                            class="w-full bg-gray-50 border-b-2 border-gray-300 focus:border-fedex-purple outline-none px-4 py-3 text-lg transition-colors peer placeholder-transparent rounded-t-md"
+                            placeholder="Tracking ID">
+                        <label for="trackingInput" 
+                            class="absolute left-4 -top-2.5 text-xs text-gray-500 transition-all peer-placeholder-shown:text-lg peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-fedex-purple">
+                            Tracking ID
+                        </label>
+                    </div>
+                    <button onclick="trackPackage()" 
+                        class="bg-fedex-orange hover:bg-orange-600 text-white font-bold py-3 px-8 rounded uppercase transition-all transform active:scale-95 shadow-md flex items-center justify-center min-w-[120px]">
+                        <span id="btnText">Track</span>
+                        <i id="btnSpinner" class="fas fa-circle-notch fa-spin ml-2 hidden"></i>
+                    </button>
+                </div>
+                
+                <p class="mt-4 text-xs text-gray-500">
+                    Try Example IDs: 
+                    <button class="font-mono bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded mx-1 transition" onclick="fillInput('123456789012')">123456789012</button> (Delivered)
+                    <button class="font-mono bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded mx-1 transition" onclick="fillInput('987654321098')">987654321098</button> (In Transit)
+                </p>
+
+                <!-- Results Section -->
+                <div id="resultContainer" class="hidden mt-8 border-t border-gray-200 pt-6 animate-fade-in">
+                    
+                    <!-- Header -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                        <div>
+                            <div id="statusBadge" class="inline-block px-3 py-1 rounded-full text-sm font-bold text-white mb-2 shadow-sm">
+                                STATUS
+                            </div>
+                            <h3 class="text-3xl font-bold text-gray-800" id="mainStatusText">Delivered</h3>
+                            <p class="text-gray-500 mt-1" id="deliveryDate">Monday, 10/25/2023 at 2:30 PM</p>
+                        </div>
+                        <div class="mt-4 md:mt-0 md:text-right bg-gray-50 p-3 rounded border border-gray-100 w-full md:w-auto">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider">Tracking Number</p>
+                            <p class="text-xl font-mono font-bold text-fedex-purple" id="displayTrackingId">1234567890</p>
+                            <div class="mt-2 flex justify-end space-x-3">
+                                <div class="text-xs text-blue-600 hover:underline cursor-pointer" onclick="copyToClipboard()"><i class="fas fa-copy mr-1"></i> Copy</div>
+                                <div class="text-xs text-blue-600 hover:underline cursor-pointer" onclick="shareTrackingLink()"><i class="fas fa-share-alt mr-1"></i> Share</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar (Visual) -->
+                    <div class="w-full bg-gray-200 h-3 rounded-full mb-8 overflow-hidden shadow-inner">
+                        <div id="progressBar" class="bg-green-500 h-full w-0 transition-all duration-1000 ease-out relative">
+                             <div class="absolute inset-0 bg-white opacity-20" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Details Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Timeline -->
+                        <div class="md:col-span-2">
+                            <h4 class="font-bold text-gray-700 mb-4 border-b pb-2">Travel History</h4>
+                            <div id="timelineContainer" class="ml-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                <!-- JS will populate this -->
+                            </div>
+                        </div>
+
+                        <!-- Info Sidebar -->
+                        <div class="bg-gray-50 p-5 rounded-lg border border-gray-200 h-fit shadow-sm">
+                            <h4 class="font-bold text-gray-700 mb-4 flex justify-between items-center">
+                                Shipment Facts
+                                <i class="fas fa-info-circle text-gray-400"></i>
+                            </h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between border-b border-gray-100 pb-2">
+                                    <span class="text-gray-500">Service</span>
+                                    <span class="font-medium text-gray-800" id="factService">--</span>
+                                </div>
+                                <div class="flex justify-between border-b border-gray-100 pb-2">
+                                    <span class="text-gray-500">Weight</span>
+                                    <span class="font-medium text-gray-800" id="factWeight">--</span>
+                                </div>
+                                <div class="flex justify-between border-b border-gray-100 pb-2">
+                                    <span class="text-gray-500">Dimensions</span>
+                                    <span class="font-medium text-gray-800" id="factDimensions">--</span>
+                                </div>
+                                <div class="flex justify-between border-b border-gray-100 pb-2">
+                                    <span class="text-gray-500">Pieces</span>
+                                    <span class="font-medium text-gray-800" id="factPieces">--</span>
+                                </div>
+                                <div class="flex justify-between border-b border-gray-100 pb-2">
+                                    <span class="text-gray-500">Carbon Footprint</span>
+                                    <span class="font-medium text-green-600" id="factCarbon">--</span>
+                                </div>
+                                <div class="mt-4 pt-2 text-xs text-gray-400 italic">
+                                    * Standard transit times may vary due to weather or operational conditions.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Map View -->
+                    <div class="mt-8">
+                        <h4 class="font-bold text-gray-700 mb-4">Current Location</h4>
+                        <div class="h-64 bg-gray-200 rounded-lg overflow-hidden shadow-inner border border-gray-300">
+                            <div id="trackingMap" class="w-full h-full"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Marketing Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+                <div onclick="showServiceModal('shipping')" class="bg-white p-6 rounded-lg shadow-lg text-center hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1 group border-t-4 border-transparent hover:border-fedex-purple">
+                    <div class="text-fedex-purple text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"><i class="fas fa-shipping-fast"></i></div>
+                    <h3 class="font-bold text-xl mb-2 text-gray-800">Create a Shipment</h3>
+                    <p class="text-sm text-gray-600">Create a shipping label, schedule a pickup, and manage your shipments online.</p>
+                </div>
+                <div onclick="showServiceModal('design')" class="bg-white p-6 rounded-lg shadow-lg text-center hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1 group border-t-4 border-transparent hover:border-fedex-purple">
+                    <div class="text-fedex-purple text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"><i class="fas fa-print"></i></div>
+                    <h3 class="font-bold text-xl mb-2 text-gray-800">Printing Services</h3>
+                    <p class="text-sm text-gray-600">Posters, manuals, signs, and more. Upload files and pick up in store today.</p>
+                </div>
+                <div onclick="showServiceModal('locations')" class="bg-white p-6 rounded-lg shadow-lg text-center hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1 group border-t-4 border-transparent hover:border-fedex-purple">
+                    <div class="text-fedex-purple text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"><i class="fas fa-map-marker-alt"></i></div>
+                    <h3 class="font-bold text-xl mb-2 text-gray-800">Find Locations</h3>
+                    <p class="text-sm text-gray-600">Find a nearby FedEx location to drop off or pick up your packages reliably.</p>
+                </div>
+            </div>
+
+            <!-- Promo Banner -->
+            <div class="mt-12 bg-fedex-purple rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row items-center">
+                <div class="p-8 md:w-2/3 text-white">
+                    <h3 class="text-2xl font-bold mb-2">Save 40% on International Shipping</h3>
+                    <p class="mb-6 opacity-90">Open a personal account today and start saving on eligible FedEx Express services.</p>
+                    <button onclick="openModal('loginModal')" class="bg-white text-fedex-purple px-6 py-2 rounded font-bold hover:bg-gray-100 transition">Get Started</button>
+                </div>
+                <div class="md:w-1/3 h-full">
+                    <img src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" alt="Box" class="w-full h-48 md:h-full object-cover">
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-auto py-12 border-t-4 border-fedex-orange">
+        <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 text-sm">
+            <div>
+                <h5 class="font-bold uppercase mb-4 text-gray-400 tracking-wider">Company Information</h5>
+                <ul class="space-y-2 text-gray-300">
+                    <li><a href="#" onclick="showInfoModal('about')" class="hover:text-white hover:underline transition">About FedEx</a></li>
+                    <li><a href="#" onclick="showInfoModal('careers')" class="hover:text-white hover:underline transition">Careers</a></li>
+                    <li><a href="#" onclick="showInfoModal('international')" class="hover:text-white hover:underline transition">International</a></li>
+                    <li><a href="#" onclick="showInfoModal('security')" class="hover:text-white hover:underline transition">Security</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="font-bold uppercase mb-4 text-gray-400 tracking-wider">Customer Support</h5>
+                <ul class="space-y-2 text-gray-300">
+                    <li><a href="#" onclick="showInfoModal('contact')" class="hover:text-white hover:underline transition">Contact Us</a></li>
+                    <li><a href="#" onclick="showInfoModal('faq')" class="hover:text-white hover:underline transition">Frequently Asked Questions</a></li>
+                    <li><a href="#" onclick="scrollToSection('tracking-section')" class="hover:text-white hover:underline transition">Track by Reference</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="font-bold uppercase mb-4 text-gray-400 tracking-wider">Language</h5>
+                <div class="flex items-center cursor-pointer hover:text-gray-200 transition">
+                    <i class="fas fa-globe mr-2"></i> United States - English
+                </div>
+            </div>
+            <div>
+                <h5 class="font-bold uppercase mb-4 text-gray-400 tracking-wider">Follow Us</h5>
+                <div class="flex space-x-4 text-2xl">
+                    <a href="https://www.facebook.com/FedEx/" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-facebook"></i></a>
+                    <a href="https://twitter.com/fedex" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.instagram.com/fedex/" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.linkedin.com/company/fedex" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-linkedin"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 mt-8 pt-8 border-t border-gray-700 text-xs text-center md:text-left text-gray-500 flex flex-col md:flex-row justify-between">
+            <p>&copy; FedEx 1995-2023. This is an educational clone for demonstration.</p>
+            <div class="mt-2 md:mt-0 space-x-4">
+                <a href="#" class="hover:underline">Privacy Policy</a>
+                <a href="#" class="hover:underline">Terms of Use</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. State & Mock Data (with LocalStorage) ---
+        let isLoggedIn = false;
+        let isAdmin = false;
+        let currentUser = null;
+        let isSignupMode = false;
+
+        async function resetToDefaults() {
+            if(confirm("Reset settings to default values? This cannot be undone.")) {
+                try {
+                    const response = await fetch('/api/settings/reset', { method: 'POST' });
+                    if (response.ok) {
+                        showToast("Settings have been reset.");
+                        renderSettings();
+                    } else {
+                        showToast("Failed to reset settings.", "error");
+                    }
+                } catch (e) {
+                    showToast("Network error.", "error");
+                }
+            }
+        }
+
+        // --- INIT VARIABLES ---
+        // Data is now fetched from backend
+        let usersData = [];
+        let locationsData = [];
+        let settingsData = {};
+        let auditLogsData = [];
+        let filteredAuditLogs = [];
+        let currentAuditPage = 1;
+        let auditSortDesc = true;
+        const auditItemsPerPage = 10;
+        let currentShipmentPage = 1;
+        const shipmentsPerPage = 10;
+        let allShipmentsData = [];
+        let shipmentChart = null;
+        let shipmentServiceChart = null;
+        let historyChart = null;
+        let serverLoadChart = null;
+        let trackingPollInterval = null;
+        let mapInstance = null;
+
+        const STATUS_COLORS = {
+            'Delivered': 'bg-green-600',
+            'In Transit': 'bg-fedex-orange',
+            'Exception': 'bg-red-600',
+            'Pending': 'bg-blue-600',
+            'in_transit': 'bg-fedex-orange',
+            'delivered': 'bg-green-600',
+            'out_for_delivery': 'bg-fedex-orange',
+            'exception': 'bg-red-600'
+        };
+
+        const SERVICE_CONTENT = {
+            'shipping': `
+                <div class="space-y-4">
+                    <p class="text-gray-600">Enter package details to generate a label.</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" placeholder="From Zip Code" class="border p-2 rounded">
+                        <input type="text" placeholder="To Zip Code" class="border p-2 rounded">
+                        <input type="number" placeholder="Weight (lbs)" class="border p-2 rounded">
+                        <select class="border p-2 rounded"><option>FedEx Ground</option><option>FedEx Express</option></select>
+                    </div>
+                </div>`,
+            'design': `
+                <div class="text-center">
+                    <i class="fas fa-file-pdf text-4xl text-red-500 mb-4"></i>
+                    <p class="mb-4">Upload your PDF or Image file to start your print order.</p>
+                    <div class="border-2 border-dashed border-gray-300 p-8 rounded bg-gray-50 hover:bg-gray-100 cursor-pointer">
+                        <span class="text-fedex-purple font-bold">Click to Upload</span>
+                    </div>
+                </div>`,
+            'locations': `
+                <div class="space-y-4">
+                    <div class="flex gap-2">
+                        <input type="text" placeholder="Enter Zip Code or City" class="border p-2 rounded w-full">
+                        <button class="bg-fedex-purple text-white px-4 rounded"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div class="h-40 bg-gray-200 rounded flex items-center justify-center text-gray-500">
+                        [Map View Simulation]
+                    </div>
+                </div>`
+        };
+
+        const INFO_CONTENT = {
+            'about': `
+                <div class="space-y-4">
+                    <img src="https://images.unsplash.com/photo-1580674684081-7617fbf3d745?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-full h-48 object-cover rounded mb-4" alt="FedEx Plane">
+                    <h4 class="font-bold text-lg text-fedex-purple">Our Company</h4>
+                    <p class="text-gray-700">FedEx Corporation provides customers and businesses worldwide with a broad portfolio of transportation, e-commerce and business services. With annual revenue of $84 billion, the company offers integrated business solutions through operating companies competing collectively, operating collaboratively and innovating digitally under the respected FedEx brand.</p>
+                    <p class="text-gray-700">Consistently ranked among the world's most admired and trusted employers, FedEx inspires its 570,000 team members to remain focused on safety, the highest ethical and professional standards and the needs of their customers and communities.</p>
+                </div>`,
+            'careers': `
+                <div class="space-y-4">
+                    <h4 class="font-bold text-lg text-fedex-purple">Join Our Team</h4>
+                    <p class="text-gray-600 mb-4">We are looking for passionate individuals to join our global network.</p>
+                    <div class="space-y-2">
+                        <div class="border p-3 rounded hover:bg-gray-50 cursor-pointer flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-gray-800">Delivery Driver</div>
+                                <div class="text-xs text-gray-500">Local Operations • Full Time</div>
+                            </div>
+                            <button class="text-fedex-orange text-sm font-bold">Apply</button>
+                        </div>
+                        <div class="border p-3 rounded hover:bg-gray-50 cursor-pointer flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-gray-800">Warehouse Handler</div>
+                                <div class="text-xs text-gray-500">Logistics • Part Time</div>
+                            </div>
+                            <button class="text-fedex-orange text-sm font-bold">Apply</button>
+                        </div>
+                        <div class="border p-3 rounded hover:bg-gray-50 cursor-pointer flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-gray-800">Software Engineer</div>
+                                <div class="text-xs text-gray-500">Technology • Remote</div>
+                            </div>
+                            <button class="text-fedex-orange text-sm font-bold">Apply</button>
+                        </div>
+                    </div>
+                </div>`,
+            'international': `
+                <div class="space-y-4">
+                    <div class="bg-blue-50 p-4 rounded border border-blue-100">
+                        <h4 class="font-bold text-blue-800 mb-2"><i class="fas fa-globe-americas mr-2"></i>Global Reach</h4>
+                        <p class="text-sm text-blue-700">We ship to over 220 countries and territories. Our international services ensure your package arrives safely and on time, navigating customs with ease.</p>
+                    </div>
+                    <h4 class="font-bold text-gray-700">Tools & Resources</h4>
+                    <ul class="list-disc list-inside text-gray-600 space-y-1">
+                        <li>International Shipping Guide</li>
+                        <li>Customs Forms & Documentation</li>
+                        <li>Duty & Tax Estimator</li>
+                        <li>Country-Specific Regulations</li>
+                    </ul>
+                </div>`,
+            'security': `
+                <div class="space-y-4">
+                    <div class="bg-red-50 p-4 rounded border border-red-100">
+                        <h4 class="font-bold text-red-800 mb-2"><i class="fas fa-shield-alt mr-2"></i>Fraud Alert</h4>
+                        <p class="text-sm text-red-700">FedEx does not request personal information, such as passwords or credit card numbers, via unsolicited mail or email. If you receive a suspicious message, please report it immediately.</p>
+                    </div>
+                    <h4 class="font-bold text-gray-700">Tips for Safe Shipping</h4>
+                    <ul class="list-disc list-inside text-gray-600 space-y-1">
+                        <li>Track your packages regularly.</li>
+                        <li>Require a signature for delivery.</li>
+                        <li>Use FedEx Delivery Manager to manage deliveries.</li>
+                    </ul>
+                </div>`,
+            'contact': `
+                <div class="space-y-4">
+                    <p class="text-gray-600">We're here to help. Send us a message and we'll respond within 24 hours.</p>
+                    <form onsubmit="event.preventDefault(); simulateAction();" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Subject</label>
+                            <select class="w-full border p-2 rounded"><option>Tracking Issue</option><option>Billing Inquiry</option><option>General Question</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Message</label>
+                            <textarea class="w-full border p-2 rounded h-24" placeholder="How can we assist you?"></textarea>
+                        </div>
+                        <button type="submit" class="bg-fedex-purple text-white px-4 py-2 rounded font-bold w-full hover:bg-purple-800">Send Message</button>
+                    </form>
+                    <div class="mt-4 pt-4 border-t text-center text-sm text-gray-500">
+                        <p>Customer Service: <strong>1.800.GoFedEx</strong></p>
+                        <p>1.800.463.3339</p>
+                    </div>
+                </div>`,
+            'faq': `
+                <div class="space-y-3">
+                    <details class="bg-gray-50 p-3 rounded border border-gray-200 cursor-pointer">
+                        <summary class="font-bold text-gray-700">How do I track my package?</summary>
+                        <p class="mt-2 text-sm text-gray-600">Enter your tracking number in the search bar on the homepage or use the tracking tool in the navigation menu.</p>
+                    </details>
+                    <details class="bg-gray-50 p-3 rounded border border-gray-200 cursor-pointer">
+                        <summary class="font-bold text-gray-700">What if I missed my delivery?</summary>
+                        <p class="mt-2 text-sm text-gray-600">The driver will leave a door tag. You can use the tag number to reschedule delivery or pick up your package at a nearby location.</p>
+                    </details>
+                    <details class="bg-gray-50 p-3 rounded border border-gray-200 cursor-pointer">
+                        <summary class="font-bold text-gray-700">How do I calculate shipping costs?</summary>
+                        <p class="mt-2 text-sm text-gray-600">Use the "Create a Shipment" tool to get rate estimates based on package weight, dimensions, and destination.</p>
+                    </details>
+                    <details class="bg-gray-50 p-3 rounded border border-gray-200 cursor-pointer">
+                        <summary class="font-bold text-gray-700">Can I change the delivery address?</summary>
+                        <p class="mt-2 text-sm text-gray-600">Yes, you can use FedEx Delivery Manager to request a change of address or hold at location for eligible shipments.</p>
+                    </details>
+                </div>`,
+            'support': `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div onclick="showInfoModal('contact')" class="border p-4 rounded hover:bg-gray-50 cursor-pointer text-center">
+                        <div class="text-fedex-purple text-3xl mb-2"><i class="fas fa-envelope"></i></div>
+                        <h4 class="font-bold">Contact Us</h4>
+                        <p class="text-sm text-gray-500">Email or call our support team.</p>
+                    </div>
+                    <div onclick="showInfoModal('faq')" class="border p-4 rounded hover:bg-gray-50 cursor-pointer text-center">
+                        <div class="text-fedex-orange text-3xl mb-2"><i class="fas fa-question-circle"></i></div>
+                        <h4 class="font-bold">FAQs</h4>
+                        <p class="text-sm text-gray-500">Find answers to common questions.</p>
+                    </div>
+                    <div onclick="showInfoModal('security')" class="border p-4 rounded hover:bg-gray-50 cursor-pointer text-center">
+                        <div class="text-blue-600 text-3xl mb-2"><i class="fas fa-shield-alt"></i></div>
+                        <h4 class="font-bold">Security Center</h4>
+                        <p class="text-sm text-gray-500">Learn how to stay safe.</p>
+                    </div>
+                    <div onclick="showServiceModal('locations')" class="border p-4 rounded hover:bg-gray-50 cursor-pointer text-center">
+                        <div class="text-green-600 text-3xl mb-2"><i class="fas fa-map-marker-alt"></i></div>
+                        <h4 class="font-bold">Find Location</h4>
+                        <p class="text-sm text-gray-500">Locate a store near you.</p>
+                    </div>
+                </div>`
+        };
+
+        // --- 2. Functional Logic ---
+
+        function fillInput(val) {
+            document.getElementById('trackingInput').value = val;
+            trackPackage();
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('displayTrackingId').textContent;
+            // Modern copy approach for iframe/browser compatibility
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('Tracking ID copied to clipboard');
+        }
+
+        function shareTrackingLink() {
+            const container = document.getElementById('displayTrackingId');
+            const id = container.childNodes[0].textContent.trim();
+            const url = `${window.location.origin}${window.location.pathname}?track=${id}`;
+            
+            const el = document.createElement('textarea');
+            el.value = url;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('Direct link copied to clipboard!');
+        }
+
+        async function trackPackage() {
+            const input = document.getElementById('trackingInput').value.trim();
+            const btnText = document.getElementById('btnText');
+            const btnSpinner = document.getElementById('btnSpinner');
+            const resultContainer = document.getElementById('resultContainer');
+            if (trackingPollInterval) clearInterval(trackingPollInterval);
+            
+            if (!input) {
+                showToast("Please enter a tracking number.", "error");
+                document.getElementById('trackingInput').focus();
+                return;
+            }
+
+            // UI Loading State
+            btnText.textContent = "Tracking...";
+            btnSpinner.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+
+            try {
+                // Call Backend API
+                const response = await fetch(`/api/track/${input}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderResult(data, input);
+                    fetchCarbonFootprint(input);
+                    showToast("Tracking updated successfully.");
+                    document.getElementById('resultContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
+                    requestNotificationPermission();
+                    startTrackingPoll(input);
+                } else {
+                    const err = await response.json();
+                    showToast(err.message || "Tracking number not found.", "error");
+                    resultContainer.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast("Network error. Is the backend running?", "error");
+            } finally {
+                // Reset Button
+                btnText.textContent = "Track";
+                btnSpinner.classList.add('hidden');
+            }
+        }
+
+        async function fetchCarbonFootprint(id) {
+            const el = document.getElementById('factCarbon');
+            if(!el) return;
+            el.textContent = 'Calculating...';
+            
+            try {
+                const response = await fetch(`/api/carbon/${id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    el.textContent = `${data.amount} kg CO2e`;
+                } else {
+                    // Mock fallback if endpoint not available
+                    el.textContent = '0.8 kg CO2e (est)';
+                }
+            } catch (e) {
+                el.textContent = '0.8 kg CO2e (est)';
+            }
+        }
+
+        function requestNotificationPermission() {
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+        }
+
+        function sendPushNotification(title, body) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, { body, icon: 'https://www.fedex.com/content/dam/fedex-com/logos/logo.png' });
+            } else {
+                showToast(`${title}: ${body}`);
+            }
+        }
+
+        function startTrackingPoll(id) {
+            if (trackingPollInterval) clearInterval(trackingPollInterval);
+            let lastStatus = null;
+
+            trackingPollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/track/${id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        if (lastStatus && lastStatus !== data.status) {
+                            sendPushNotification("Shipment Update", `Package ${id} is now ${data.statusText}`);
+                        }
+                        lastStatus = data.status;
+                        renderResult(data, id);
+                    }
+                } catch (e) { /* ignore poll errors */ }
+            }, 10000); // Poll every 10 seconds
+        }
+
+        function renderResult(data, id) {
+            const container = document.getElementById('resultContainer');
+            const badge = document.getElementById('statusBadge');
+            const mainText = document.getElementById('mainStatusText');
+            const dateText = document.getElementById('deliveryDate');
+            const displayId = document.getElementById('displayTrackingId');
+            const progress = document.getElementById('progressBar');
+            const timeline = document.getElementById('timelineContainer');
+
+            // Determine color based on status
+            const statusColor = STATUS_COLORS[data.status] || 'bg-gray-500';
+            
+            // Calculate progress bar width
+            let progressWidth = '10%';
+            if (data.status === 'delivered') progressWidth = '100%';
+            else if (data.status === 'out_for_delivery') progressWidth = '80%';
+            else if (data.status === 'in_transit') progressWidth = '50%';
+
+            badge.className = `inline-block px-3 py-1 rounded-full text-sm font-bold text-white mb-2 shadow-sm ${statusColor}`;
+            badge.textContent = data.statusText.toUpperCase();
+            mainText.textContent = data.statusText;
+            dateText.textContent = data.estimatedDelivery;
+            displayId.innerHTML = `${id} <span class="ml-2 animate-pulse text-red-500 font-bold text-xs border border-red-200 bg-red-50 px-2 py-0.5 rounded-full"><i class="fas fa-circle text-[6px] align-middle mr-1"></i>LIVE</span>`;
+            
+            // Update Facts
+            document.getElementById('factService').textContent = data.service || 'N/A';
+            document.getElementById('factWeight').textContent = data.weight || 'N/A';
+            document.getElementById('factDimensions').textContent = data.dimensions || 'N/A';
+            document.getElementById('factPieces').textContent = data.pieces || '1';
+            
+            // Update Map
+            updateTrackingMap(id);
+
+            progress.style.width = '0%';
+            progress.className = `${statusColor} h-full transition-all duration-1000 ease-out relative`;
+            setTimeout(() => { progress.style.width = progressWidth; }, 100);
+
+            timeline.innerHTML = data.timeline.map((item) => `
+                <div class="timeline-item ${item.status === data.status ? 'active' : ''} ${item.status !== data.status ? 'completed' : ''}">
+                    <div class="timeline-dot"></div>
+                    <div class="text-sm font-bold text-gray-800">${item.description}</div>
+                    <div class="text-xs text-gray-500">${item.location} - ${item.date}</div>
+                </div>
+            `).join('');
+
+            container.classList.remove('hidden');
+        }
+
+        async function updateTrackingMap(trackingNumber) {
+            const mapContainer = document.getElementById('trackingMap');
+            if (!mapContainer) return;
+
+            try {
+                const response = await fetch(`/api/track/${trackingNumber}/route`);
+                const route = await response.json();
+
+                if (mapInstance) {
+                    mapInstance.remove();
+                }
+
+                if (route.length > 0) {
+                    // Initialize Leaflet Map
+                    mapInstance = L.map('trackingMap').setView([route[0].lat, route[0].lng], 5);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(mapInstance);
+
+                    const latLngs = route.map(pt => [pt.lat, pt.lng]);
+                    const polyline = L.polyline(latLngs, { color: '#4D148C', weight: 4 }).addTo(mapInstance);
+                    
+                    // Add markers
+                    route.forEach((pt, index) => {
+                        const isLast = index === 0; // First in array is most recent
+                        const color = isLast ? '#FF6200' : '#4D148C';
+                        
+                        const markerHtml = `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`;
+                        const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [12, 12], iconAnchor: [6, 6] });
+                        
+                        L.marker([pt.lat, pt.lng], { icon }).addTo(mapInstance)
+                            .bindPopup(`<b>${pt.location}</b><br>${new Date(pt.date).toLocaleString()}`);
+                    });
+
+                    mapInstance.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                } else {
+                    mapContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Map data unavailable</div>';
+                }
+            } catch (e) {
+                console.error("Map error", e);
+                mapContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Map loading failed</div>';
+            }
+        }
+
+        // --- 3. Modal & Auth Logic ---
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function showServiceModal(type) {
+            const titles = {
+                'shipping': 'Create a Shipment',
+                'design': 'Design & Print Services',
+                'locations': 'Find a Location'
+            };
+            document.getElementById('serviceModalTitle').textContent = titles[type];
+            document.getElementById('serviceModalContent').innerHTML = SERVICE_CONTENT[type];
+            openModal('serviceModal');
+        }
+
+        function showInfoModal(type) {
+            const titles = {
+                'about': 'About FedEx',
+                'careers': 'Careers at FedEx',
+                'international': 'International Shipping',
+                'security': 'Security Center',
+                'contact': 'Contact Us',
+                'faq': 'Frequently Asked Questions',
+                'support': 'Customer Support'
+            };
+            document.getElementById('infoModalTitle').textContent = titles[type] || 'Information';
+            document.getElementById('infoModalContent').innerHTML = INFO_CONTENT[type] || '<p>Content not available.</p>';
+            openModal('infoModal');
+        }
+
+        function performSearch() {
+            const query = document.getElementById('globalSearchInput').value.trim();
+            const resultsContainer = document.getElementById('searchResults');
+            const content = document.getElementById('searchResultsContent');
+            
+            if (!query) return;
+
+            // Check if it looks like a tracking number (digits)
+            if (/^\d+$/.test(query)) {
+                closeModal('searchModal');
+                document.getElementById('trackingInput').value = query;
+                trackPackage();
+                return;
+            }
+
+            // Mock Site Search
+            resultsContainer.classList.remove('hidden');
+            content.innerHTML = `
+                <div class="p-2 bg-yellow-50 border border-yellow-100 rounded text-yellow-800 mb-2">
+                    <i class="fas fa-info-circle mr-1"></i> No direct tracking ID match.
+                </div>
+                <p>Showing results for "<strong>${query}</strong>":</p>
+                <ul class="mt-2 space-y-2">
+                    <li><a href="#" onclick="showInfoModal('faq')" class="text-blue-600 hover:underline">Search in FAQs</a></li>
+                    <li><a href="#" onclick="showInfoModal('support')" class="text-blue-600 hover:underline">Contact Support about "${query}"</a></li>
+                </ul>
+            `;
+        }
+
+        function toggleAuthMode() {
+            isSignupMode = !isSignupMode;
+            const title = document.getElementById('authModalTitle');
+            const nameGroup = document.getElementById('signupNameGroup');
+            const btn = document.getElementById('authSubmitBtn');
+            const toggleText = document.getElementById('authToggleText');
+            const toggleLink = document.getElementById('authToggleLink');
+            
+            if (isSignupMode) {
+                title.textContent = "Sign Up";
+                nameGroup.classList.remove('hidden');
+                btn.textContent = "Create Account";
+                toggleText.textContent = "Already have an account?";
+                toggleLink.textContent = "Log In";
+            } else {
+                title.textContent = "Log In";
+                nameGroup.classList.add('hidden');
+                btn.textContent = "Log In";
+                toggleText.textContent = "Don't have an account?";
+                toggleLink.textContent = "Sign Up";
+            }
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const name = document.getElementById('signupName').value;
+            
+            // Use Firebase Auth from window object
+            const { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } = window.firebaseAuth;
+
+            try {
+                if (isSignupMode) {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    if (name) {
+                        await updateProfile(userCredential.user, { displayName: name });
+                    }
+                    showToast("Account created successfully!");
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    showToast("Logged in successfully!");
+                }
+                closeModal('loginModal');
+            } catch (error) {
+                console.error(error);
+                let msg = "Authentication failed.";
+                if (error.code === 'auth/invalid-credential') msg = "Invalid email or password.";
+                if (error.code === 'auth/email-already-in-use') msg = "Email already in use.";
+                if (error.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+                showToast(msg, "error");
+            }
+        }
+
+        async function handleGoogleLogin() {
+            const { auth, GoogleAuthProvider, signInWithPopup } = window.firebaseAuth;
+            const provider = new GoogleAuthProvider();
+            
+            try {
+                await signInWithPopup(auth, provider);
+                showToast("Logged in with Google successfully!");
+                closeModal('loginModal');
+            } catch (error) {
+                console.error(error);
+                showToast("Google Sign-In failed.", "error");
+            }
+        }
+
+        function handleLogout() {
+            if(confirm('Log out of your account?')) {
+                const { auth, signOut } = window.firebaseAuth;
+                signOut(auth).then(() => {
+                    showToast("Logged out successfully.");
+                }).catch((error) => {
+                    showToast("Error logging out", "error");
+                });
+            }
+        }
+
+        // --- 4. ADMIN PANEL FUNCTIONS ---
+
+        // View Switching Logic
+        function switchAdminView(viewName) {
+            // Update Sidebar UI
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active', 'bg-fedex-purple', 'text-white'));
+            const activeNav = document.getElementById('nav-' + viewName);
+            if(activeNav) activeNav.classList.add('active');
+
+            // Hide all views
+            document.querySelectorAll('.admin-view').forEach(el => el.classList.add('hidden'));
+            
+            // Show selected view and render data
+            document.getElementById('admin' + viewName.charAt(0).toUpperCase() + viewName.slice(1) + 'View').classList.remove('hidden');
+
+            if(viewName === 'dashboard') renderDashboard();
+            if(viewName === 'shipments') renderAdminTable();
+            if(viewName === 'users') renderUsersTable();
+            if(viewName === 'locations') renderLocationsTable();
+            if(viewName === 'settings') renderSettings();
+            if(viewName === 'audit') renderAuditLogsTable();
+        }
+
+        // --- DASHBOARD ---
+        async function renderDashboard() {
+            try {
+                const [pkgRes, userRes, statsRes, serviceRes, historyRes, avgTimeRes, stateRes, healthRes, topUsersRes, settingsRes, loadRes, auditRes, revenueRes] = await Promise.all([
+                    fetch('/api/packages'),
+                    fetch('/api/users'),
+                    fetch('/api/stats/shipments-by-status'),
+                    fetch('/api/stats/shipments-by-service'),
+                    fetch('/api/stats/shipments-last-7-days'),
+                    fetch('/api/stats/average-delivery-time'),
+                    fetch('/api/stats/shipments-by-state'),
+                    fetch('/api/system/health'),
+                    fetch('/api/stats/top-users'),
+                    fetch('/api/settings'),
+                    fetch('/api/system/load-history'),
+                    fetch('/api/audit-logs'),
+                    fetch('/api/stats/revenue')
+                ]);
+                
+                const packages = await pkgRes.json();
+                const users = await userRes.json();
+                const stats = await statsRes.json();
+                const serviceStats = await serviceRes.json();
+                const history = await historyRes.json();
+                const avgTimeData = await avgTimeRes.json();
+                const stateStats = await stateRes.json();
+                const healthData = await healthRes.json();
+                const topUsers = await topUsersRes.json();
+                const settings = await settingsRes.json();
+                const loadHistory = await loadRes.json();
+                const recentActivity = await auditRes.json();
+                const revenueData = await revenueRes.json();
+                
+                const exceptions = packages.filter(p => p.status === 'exception');
+                
+                document.getElementById('dashShipmentCount').textContent = packages.length;
+                document.getElementById('dashUserCount').textContent = users.length;
+                document.getElementById('dashErrorCount').textContent = exceptions.length;
+                document.getElementById('dashAvgTime').textContent = avgTimeData.averageHours;
+                document.getElementById('dashRevenue').textContent = revenueData.total;
+
+                // Update Maintenance Toggle UI
+                updateMaintenanceToggleUI(settings.maintenance);
+
+                // Render System Health
+                if (healthData) {
+                    const memPercent = Math.round((healthData.memory.used / healthData.memory.total) * 100);
+                    const cpuLoad = Math.round(healthData.cpuLoad[0] * 10); // Mock scaling for loadavg
+                    document.getElementById('healthCpu').textContent = `${cpuLoad}%`;
+                    document.getElementById('healthCpuBar').style.width = `${Math.min(cpuLoad, 100)}%`;
+                    document.getElementById('healthMem').textContent = `${memPercent}%`;
+                    document.getElementById('healthMemBar').style.width = `${memPercent}%`;
+                }
+
+                // Render Server Load Chart
+                const loadCanvas = document.getElementById('serverLoadChart');
+                if (loadCanvas) {
+                    const ctxLoad = loadCanvas.getContext('2d');
+                    if (serverLoadChart) serverLoadChart.destroy();
+                    serverLoadChart = new Chart(ctxLoad, {
+                        type: 'line',
+                        data: {
+                            labels: loadHistory.map(h => h.time),
+                            datasets: [{
+                                label: 'Load %',
+                                data: loadHistory.map(h => h.load),
+                                borderColor: '#3B82F6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { min: 0, max: 100, ticks: { display: false }, grid: { display: false } } } }
+                    });
+                }
+
+                // Render Recent Activity Feed
+                const activityFeed = document.getElementById('dashActivityFeed');
+                if (recentActivity.length === 0) {
+                    activityFeed.innerHTML = '<div class="p-4 text-center text-gray-500">No recent activity.</div>';
+                } else {
+                    activityFeed.innerHTML = recentActivity.slice(0, 5).map(log => `
+                        <div class="p-4 flex items-start space-x-3 hover:bg-gray-50 transition">
+                            <div class="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center shrink-0"><i class="fas fa-info"></i></div>
+                            <div class="flex-grow">
+                                <p class="text-sm font-bold text-gray-800">${log.action} <span class="font-normal text-gray-500">by ${log.user}</span></p>
+                                <p class="text-xs text-gray-500">${log.details} &bull; ${new Date(log.timestamp).toLocaleString()}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // Render Top Users
+                const topUsersList = document.getElementById('topUsersList');
+                topUsersList.innerHTML = topUsers.map((u, i) => `
+                    <li class="flex justify-between items-center border-b border-gray-100 pb-1 last:border-0">
+                        <span class="text-gray-600"><span class="font-bold text-gray-400 mr-2">#${i+1}</span> ${u.name}</span>
+                        <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs font-bold">${u.count}</span>
+                    </li>
+                `).join('');
+
+                if (typeof Chart === 'undefined') return;
+
+                // Render Status Chart
+                const statusCanvas = document.getElementById('shipmentStatusChart');
+                if (statusCanvas) {
+                    const ctx = statusCanvas.getContext('2d');
+                
+                    if (shipmentChart) {
+                        shipmentChart.destroy();
+                    }
+
+                    shipmentChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(stats).map(s => s.replace(/_/g, ' ').toUpperCase()),
+                            datasets: [{
+                                data: Object.values(stats),
+                                backgroundColor: [
+                                    '#4D148C', // Purple
+                                    '#FF6200', // Orange
+                                    '#10B981', // Green
+                                    '#EF4444', // Red
+                                    '#3B82F6', // Blue
+                                    '#6B7280'  // Gray
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'right' } }
+                        }
+                    });
+                }
+
+                // Render Service Chart
+                const serviceCanvas = document.getElementById('shipmentServiceChart');
+                if (serviceCanvas) {
+                    const ctxService = serviceCanvas.getContext('2d');
+                    // Note: Ideally manage chart instance lifecycle here like others
+                    if (shipmentServiceChart) {
+                        shipmentServiceChart.destroy();
+                    }
+                    shipmentServiceChart = 
+                    new Chart(ctxService, {
+                        type: 'pie',
+                        data: {
+                            labels: Object.keys(serviceStats),
+                            datasets: [{
+                                data: Object.values(serviceStats),
+                                backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+
+                // Render History Chart
+                const historyCanvas = document.getElementById('shipmentHistoryChart');
+                if (historyCanvas) {
+                    const ctxHistory = historyCanvas.getContext('2d');
+                
+                    if (historyChart) {
+                        historyChart.destroy();
+                    }
+
+                    historyChart = new Chart(ctxHistory, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(history),
+                            datasets: [{
+                                label: 'New Shipments',
+                                data: Object.values(history),
+                                backgroundColor: '#4D148C',
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+                
+                const tbody = document.getElementById('dashErrorTableBody');
+                tbody.innerHTML = '';
+                
+                if (exceptions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2" class="p-3 text-center text-gray-500">No recent exceptions found.</td></tr>';
+                } else {
+                    exceptions.slice(0, 5).forEach(ex => {
+                        const row = document.createElement('tr');
+                        row.className = "border-b border-gray-100";
+                        row.innerHTML = `
+                            <td class="p-3 text-gray-600 font-mono">${ex.trackingNumber}</td>
+                            <td class="p-3 text-red-600 font-medium">${ex.statusText || 'Exception'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (e) {
+                showToast("Failed to load dashboard data", "error");
+            }
+        }
+
+        async function downloadDashboardReport() {
+            try {
+                const [pkgRes, statsRes, serviceRes, stateRes] = await Promise.all([
+                    fetch('/api/packages'),
+                    fetch('/api/stats/shipments-by-status'),
+                    fetch('/api/stats/shipments-by-service'),
+                    fetch('/api/stats/shipments-by-state')
+                ]);
+
+                const packages = await pkgRes.json();
+                const stats = await statsRes.json();
+                const serviceStats = await serviceRes.json();
+                const stateStats = await stateRes.json();
+
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html>
+                    <head>
+                        <title>FedEx Dashboard Report</title>
+                        <style>
+                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+                            h1 { color: #4D148C; border-bottom: 2px solid #FF6200; padding-bottom: 10px; }
+                            h2 { margin-top: 30px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+                            .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+                            .card { background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #ddd; }
+                            .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #777; text-transform: uppercase; }
+                            .card p { margin: 0; font-size: 24px; font-weight: bold; color: #333; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+                            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                            th { background-color: #f2f2f2; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>FedEx System Report</h1>
+                        <p>Generated on: ${new Date().toLocaleString()}</p>
+
+                        <div class="summary-grid">
+                            <div class="card"><h3>Total Shipments</h3><p>${packages.length}</p></div>
+                            <div class="card"><h3>Delivered</h3><p>${stats.delivered || 0}</p></div>
+                            <div class="card"><h3>Exceptions</h3><p>${stats.exception || 0}</p></div>
+                        </div>
+
+                        <h2>Shipments by Service</h2>
+                        <ul>${Object.entries(serviceStats).map(([k, v]) => `<li><strong>${k}:</strong> ${v}</li>`).join('')}</ul>
+
+                        <h2>Shipments by Destination State</h2>
+                        <ul>${Object.entries(stateStats).map(([k, v]) => `<li><strong>${k}:</strong> ${v}</li>`).join('')}</ul>
+
+                        <h2>Recent Shipments</h2>
+                        <table>
+                            <thead><tr><th>Tracking ID</th><th>Status</th><th>Service</th><th>Destination</th></tr></thead>
+                            <tbody>${packages.slice(0, 10).map(p => `<tr><td>${p.trackingNumber}</td><td>${p.status}</td><td>${p.service}</td><td>${p.destination}</td></tr>`).join('')}</tbody>
+                        </table>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+            } catch (e) { showToast("Failed to generate report", "error"); }
+        }
+
+        function updateMaintenanceToggleUI(isActive) {
+            const btn = document.getElementById('dashMaintenanceToggle');
+            const dot = btn.firstElementChild;
+            if (isActive) {
+                btn.classList.remove('bg-gray-300');
+                btn.classList.add('bg-green-500');
+                dot.classList.add('translate-x-5');
+            } else {
+                btn.classList.add('bg-gray-300');
+                btn.classList.remove('bg-green-500');
+                dot.classList.remove('translate-x-5');
+            }
+        }
+
+        async function toggleMaintenanceMode() {
+            const btn = document.getElementById('dashMaintenanceToggle');
+            const isCurrentlyActive = btn.classList.contains('bg-green-500');
+            const newState = !isCurrentlyActive;
+            
+            try {
+                await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maintenance: newState }) });
+                updateMaintenanceToggleUI(newState);
+                showToast(`Maintenance mode ${newState ? 'enabled' : 'disabled'}`);
+            } catch (e) { showToast("Failed to update settings", "error"); }
+        }
+
+        // --- SHIPMENTS ---
+        async function renderAdminTable() {
+            const tbody = document.getElementById('adminTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
+
+            try {
+                const response = await fetch('/api/packages');
+                allShipmentsData = await response.json();
+                
+                tbody.innerHTML = '';
+                
+                const query = document.getElementById('shipmentSearchInput').value.toLowerCase();
+                const filteredData = allShipmentsData.filter(pkg => 
+                    pkg.trackingNumber.toLowerCase().includes(query)
+                );
+
+                const start = (currentShipmentPage - 1) * shipmentsPerPage;
+                const end = start + shipmentsPerPage;
+                const pageData = filteredData.slice(start, end);
+
+                pageData.forEach(pkg => {
+                    const row = document.createElement('tr');
+                    const statusLabel = pkg.statusText || pkg.status;
+                    const statusColor = STATUS_COLORS[pkg.status] || 'bg-gray-500';
+                    
+                    let formattedDate = pkg.estimatedDelivery || '--';
+                    // Try to format if it looks like an ISO date or similar
+                    if (pkg.estimatedDelivery && !isNaN(Date.parse(pkg.estimatedDelivery))) {
+                        formattedDate = new Date(pkg.estimatedDelivery).toLocaleString();
+                    }
+
+                    row.innerHTML = `
+                        <td class="font-mono font-bold text-gray-700">${pkg.trackingNumber}</td>
+                        <td><span class="px-2 py-1 rounded text-xs text-white ${statusColor}">${statusLabel}</span></td>
+                        <td class="text-gray-600 hidden sm:table-cell">${pkg.service}</td>
+                        <td class="text-gray-600 text-xs truncate max-w-[150px] hidden sm:table-cell">${formattedDate}</td>
+                        <td class="text-right">
+                            <button onclick="printLabel('${pkg.trackingNumber}')" class="text-gray-600 hover:text-gray-800 mr-2 bg-gray-100 p-2 rounded-full" title="Print Label"><i class="fas fa-print"></i></button>
+                            <button onclick="openEditModal('${pkg.trackingNumber}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteShipment('${pkg.trackingNumber}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Update Pagination UI
+                const totalPages = Math.ceil(filteredData.length / shipmentsPerPage) || 1;
+                document.getElementById('shipmentPageInfo').textContent = `Page ${currentShipmentPage} of ${totalPages}`;
+                document.getElementById('shipmentPrevBtn').disabled = currentShipmentPage === 1;
+                document.getElementById('shipmentNextBtn').disabled = currentShipmentPage === totalPages;
+
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Failed to load shipments</td></tr>';
+            }
+        }
+
+        function handleShipmentSearch() {
+            currentShipmentPage = 1;
+            renderAdminTable();
+        }
+
+        function changeShipmentPage(step) {
+            const query = document.getElementById('shipmentSearchInput').value.toLowerCase();
+            const filteredCount = allShipmentsData.filter(pkg => pkg.trackingNumber.toLowerCase().includes(query)).length;
+            const totalPages = Math.ceil(filteredCount / shipmentsPerPage) || 1;
+            const newPage = currentShipmentPage + step;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentShipmentPage = newPage;
+                renderAdminTable();
+            }
+        }
+
+        async function printLabel(id) {
+            try {
+                const response = await fetch(`/api/track/${id}`);
+                if (!response.ok) throw new Error("Package not found");
+                const pkg = await response.json();
+                
+                const printWindow = window.open('', '_blank', 'width=600,height=800');
+                printWindow.document.write(`
+                    <html>
+                    <head>
+                        <title>Shipping Label - ${id}</title>
+                        <style>
+                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; }
+                            .label-container { border: 4px solid #000; padding: 20px; max-width: 400px; margin: 0 auto; }
+                            .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+                            .logo { font-size: 24px; font-weight: bold; font-style: italic; }
+                            .logo span { color: #4D148C; } .logo span.orange { color: #FF6200; }
+                            .service-type { font-size: 32px; font-weight: bold; border: 2px solid #000; padding: 5px 10px; }
+                            .address-block { margin-bottom: 20px; font-size: 14px; }
+                            .address-label { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #555; }
+                            .barcode-area { text-align: center; margin: 30px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 20px 0; }
+                            .barcode-bars { height: 60px; background: repeating-linear-gradient(to right, #000 0, #000 2px, #fff 2px, #fff 4px); width: 80%; margin: 0 auto; }
+                            .tracking-number { font-family: monospace; font-size: 18px; letter-spacing: 2px; margin-top: 5px; }
+                            .footer { font-size: 12px; display: flex; justify-content: space-between; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="header">
+                                <div class="logo"><span>Fed</span><span class="orange">Ex</span></div>
+                                <div class="service-type">${pkg.service.includes('Express') ? 'E' : 'G'}</div>
+                            </div>
+                            <div class="address-block">
+                                <div class="address-label">From:</div>
+                                <div>${pkg.sender}</div>
+                                <div>Origin Facility</div>
+                            </div>
+                            <div class="address-block">
+                                <div class="address-label">To:</div>
+                                <div>${pkg.recipient}</div>
+                                <div>${pkg.destination}</div>
+                            </div>
+                            <div class="barcode-area">
+                                <div class="barcode-bars"></div>
+                                <div class="tracking-number">${pkg.trackingNumber}</div>
+                            </div>
+                            <div class="footer">
+                                <div>Wgt: ${pkg.weight}</div>
+                                <div>Dims: ${pkg.dimensions}</div>
+                                <div>Pcs: ${pkg.pieces}</div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus(); // Focus the new window
+                setTimeout(() => { // Wait for content to render
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            } catch (e) {
+                showToast("Error generating label", "error");
+            }
+        }
+
+        function renderEditTimeline(timeline) {
+            const container = document.getElementById('editTimelineContainer');
+            container.innerHTML = '';
+            (timeline || []).forEach(event => addTimelineEvent(event));
+        }
+
+        function addTimelineEvent(event = {}) {
+            const container = document.getElementById('editTimelineContainer');
+            const div = document.createElement('div');
+            div.className = 'grid grid-cols-1 gap-2 p-2 bg-white border rounded relative group';
+            div.innerHTML = `
+                <button onclick="this.parentElement.remove()" class="absolute top-1 right-1 text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                <input type="text" class="edit-timeline-desc w-full border p-1 rounded text-xs" placeholder="Description" value="${event.description || ''}">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" class="edit-timeline-loc w-full border p-1 rounded text-xs" placeholder="Location" value="${event.location || ''}">
+                    <input type="text" class="edit-timeline-date w-full border p-1 rounded text-xs" placeholder="Date/Time" value="${event.date || new Date().toLocaleString()}">
+                </div>
+                <select class="edit-timeline-status w-full border p-1 rounded text-xs">
+                    <option value="in_transit" ${event.status === 'in_transit' ? 'selected' : ''}>In Transit</option>
+                    <option value="arrived" ${event.status === 'arrived' ? 'selected' : ''}>Arrived</option>
+                    <option value="picked_up" ${event.status === 'picked_up' ? 'selected' : ''}>Picked Up</option>
+                    <option value="created" ${event.status === 'created' ? 'selected' : ''}>Created</option>
+                    <option value="out_for_delivery" ${event.status === 'out_for_delivery' ? 'selected' : ''}>Out for Delivery</option>
+                    <option value="delivered" ${event.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                    <option value="exception" ${event.status === 'exception' ? 'selected' : ''}>Exception</option>
+                </select>
+            `;
+            container.appendChild(div);
+        }
+
+        async function openEditModal(id = null) {
+            const modal = document.getElementById('adminEditModal');
+            const title = document.getElementById('editModalTitle');
+            
+            if (id) {
+                try {
+                    const response = await fetch(`/api/track/${id}`);
+                    const pkg = await response.json();
+                    
+                    title.textContent = "Edit Shipment";
+                    document.getElementById('editOriginalId').value = id;
+                    document.getElementById('editTrackingId').value = id;
+                    document.getElementById('editTrackingId').disabled = true;
+                    document.getElementById('editStatus').value = pkg.status; // Ensure backend uses same status codes
+                    document.getElementById('editProgress').value = 50; // Mock progress
+                    document.getElementById('editLocation').value = pkg.destination || '';
+                    document.getElementById('editDate').value = pkg.estimatedDelivery || '';
+                    document.getElementById('editService').value = pkg.service || '';
+                    document.getElementById('editWeight').value = pkg.weight || '';
+                    document.getElementById('editDimensions').value = pkg.dimensions || '';
+                    document.getElementById('editPieces').value = pkg.pieces || 1;
+                    renderEditTimeline(pkg.timeline);
+                    
+                    openModal('adminEditModal');
+                } catch (e) {
+                    showToast("Error fetching package details", "error");
+                }
+            } else {
+                title.textContent = "Create New Shipment";
+                document.getElementById('editOriginalId').value = "";
+                document.getElementById('editTrackingId').value = "";
+                document.getElementById('editTrackingId').disabled = false;
+                document.getElementById('editStatus').value = "in_transit";
+                document.getElementById('editProgress').value = 0;
+                document.getElementById('editLocation').value = "";
+                document.getElementById('editDate').value = "";
+                document.getElementById('editService').value = "FedEx Ground";
+                document.getElementById('editWeight').value = "";
+                document.getElementById('editDimensions').value = "";
+                document.getElementById('editPieces').value = 1;
+                renderEditTimeline([]);
+                openModal('adminEditModal');
+            }
+        }
+
+        async function saveShipment() {
+            const originalId = document.getElementById('editOriginalId').value;
+            const trackingNumber = document.getElementById('editTrackingId').value.trim();
+            const status = document.getElementById('editStatus').value;
+            const destination = document.getElementById('editLocation').value.trim();
+            const estimatedDelivery = document.getElementById('editDate').value;
+            const service = document.getElementById('editService').value.trim();
+            const weight = document.getElementById('editWeight').value.trim();
+            const dimensions = document.getElementById('editDimensions').value.trim();
+            const pieces = document.getElementById('editPieces').value;
+            
+            // Form Validation
+            if (!trackingNumber || !destination || !service || !weight) {
+                showToast("Please fill in all required fields (Tracking ID, Location, Service, Weight)", "error");
+                return;
+            }
+            
+            const timeline = [];
+            document.querySelectorAll('#editTimelineContainer > div').forEach(div => {
+                timeline.push({
+                    description: div.querySelector('.edit-timeline-desc').value,
+                    location: div.querySelector('.edit-timeline-loc').value,
+                    date: div.querySelector('.edit-timeline-date').value,
+                    status: div.querySelector('.edit-timeline-status').value
+                });
+            });
+
+            const payload = { 
+                trackingNumber, 
+                status, 
+                statusText: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format status text nicely
+                destination, 
+                estimatedDelivery,
+                service,
+                weight,
+                dimensions,
+                pieces,
+                timeline
+            };
+            
+            try {
+                let response;
+                if (originalId) {
+                    // Update
+                    response = await fetch(`/api/packages/${originalId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    // Create
+                    // Add required fields for creation
+                    payload.sender = "Admin Created";
+                    payload.recipient = "Customer";
+                    response = await fetch('/api/packages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (response.ok) {
+                    showToast("Shipment saved successfully");
+                    closeModal('adminEditModal');
+                    renderAdminTable();
+                } else {
+                    const err = await response.json();
+                    showToast(err.message || "Error saving shipment", "error");
+                }
+            } catch (e) {
+                showToast("Network error", "error");
+            }
+        }
+
+        async function deleteShipment(id) {
+            if(confirm(`Delete shipment ${id}?`)) {
+                try {
+                    const response = await fetch(`/api/packages/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        showToast("Shipment deleted");
+                        renderAdminTable();
+                    } else {
+                        showToast("Error deleting shipment", "error");
+                    }
+                } catch (e) {
+                    showToast("Network error", "error");
+                }
+            }
+        }
+
+        function updateStatusColorPreview() {
+            const status = document.getElementById('editStatus').value;
+            const select = document.getElementById('editStatus');
+            select.className = "w-full border p-2 rounded outline-none";
+            if(status === 'delivered') select.classList.add('border-green-500', 'text-green-700');
+            else if(status === 'exception') select.classList.add('border-red-500', 'text-red-700');
+            else select.classList.add('border-orange-500', 'text-orange-700');
+        }
+
+        // --- USERS ---
+        async function renderUsersTable() {
+            const tbody = document.getElementById('adminUsersTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
+            
+            const response = await fetch('/api/users');
+            usersData = await response.json();
+            
+            tbody.innerHTML = '';
+            usersData.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="font-mono text-gray-600">${user.id}</td>
+                    <td class="font-bold text-gray-800">${user.name}</td>
+                    <td class="hidden sm:table-cell">${user.email}</td>
+                    <td><span class="bg-gray-200 text-xs px-2 py-1 rounded text-gray-700">${user.role}</span></td>
+                    <td class="text-right">
+                        <button onclick="openUserModal('${user.id}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${user.id}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function openUserModal(id = null) {
+            const title = document.getElementById('userModalTitle');
+            if(id) {
+                const user = usersData.find(u => u.id === id);
+                title.textContent = "Edit User";
+                document.getElementById('userIdInput').value = user.id;
+                document.getElementById('userNameInput').value = user.name;
+                document.getElementById('userEmailInput').value = user.email;
+                document.getElementById('userRoleInput').value = user.role;
+            } else {
+                title.textContent = "Add User";
+                document.getElementById('userIdInput').value = "";
+                document.getElementById('userNameInput').value = "";
+                document.getElementById('userEmailInput').value = "";
+                document.getElementById('userRoleInput').value = "Customer";
+            }
+            openModal('adminUserModal');
+        }
+
+        async function saveUser() {
+            const id = document.getElementById('userIdInput').value;
+            const name = document.getElementById('userNameInput').value;
+            const email = document.getElementById('userEmailInput').value;
+            const role = document.getElementById('userRoleInput').value;
+
+            if(!name || !email) return alert("Name and Email required");
+
+            const payload = { name, email, role };
+            let response;
+
+            if(id) {
+                response = await fetch(`/api/users/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+
+            if (response.ok) {
+                renderUsersTable();
+                closeModal('adminUserModal');
+                showToast("User saved successfully.");
+            }
+        }
+
+        async function deleteUser(id) {
+            if(confirm(`Are you sure you want to delete user ${id}? This action cannot be undone.`)) {
+                await fetch(`/api/users/${id}`, { method: 'DELETE' });
+                renderUsersTable();
+                showToast("User deleted.");
+            }
+        }
+
+        // --- LOCATIONS ---
+        async function renderLocationsTable() {
+            const tbody = document.getElementById('adminLocationsTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
+            
+            const response = await fetch('/api/locations');
+            locationsData = await response.json();
+            
+            tbody.innerHTML = '';
+            locationsData.forEach(loc => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="font-mono text-gray-600">${loc.id}</td>
+                    <td class="font-bold text-gray-800">${loc.name}</td>
+                    <td class="hidden sm:table-cell">${loc.address}</td>
+                    <td><span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded">${loc.type}</span></td>
+                    <td class="text-right">
+                        <button onclick="openLocationModal('${loc.id}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteLocation('${loc.id}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function openLocationModal(id = null) {
+            const title = document.getElementById('locModalTitle');
+            if(id) {
+                const loc = locationsData.find(l => l.id === id);
+                title.textContent = "Edit Location";
+                document.getElementById('locIdInput').value = loc.id;
+                document.getElementById('locNameInput').value = loc.name;
+                document.getElementById('locAddressInput').value = loc.address;
+                document.getElementById('locTypeInput').value = loc.type;
+            } else {
+                title.textContent = "Add Location";
+                document.getElementById('locIdInput').value = "";
+                document.getElementById('locNameInput').value = "";
+                document.getElementById('locAddressInput').value = "";
+                document.getElementById('locTypeInput').value = "Retail Store";
+            }
+            openModal('adminLocationModal');
+        }
+
+        async function saveLocation() {
+            const id = document.getElementById('locIdInput').value;
+            const name = document.getElementById('locNameInput').value;
+            const address = document.getElementById('locAddressInput').value;
+            const type = document.getElementById('locTypeInput').value;
+
+            if(!name || !address) return alert("Name and Address required");
+
+            if(id) {
+                const idx = MOCK_LOCATIONS.findIndex(l => l.id === id);
+                MOCK_LOCATIONS[idx] = { id, name, address, type };
+            } else {
+                const newId = 'L00' + (MOCK_LOCATIONS.length + 1);
+                MOCK_LOCATIONS.push({ id: newId, name, address, type });
+            }
+            saveData('fedex_locations', MOCK_LOCATIONS);
+            renderLocationsTable();
+            closeModal('adminLocationModal');
+            showToast("Location saved successfully.");
+        }
+
+        function deleteLocation(id) {
+            if(confirm(`Delete location ${id}?`)) {
+                MOCK_LOCATIONS = MOCK_LOCATIONS.filter(l => l.id !== id);
+                saveData('fedex_locations', MOCK_LOCATIONS);
+                renderLocationsTable();
+                showToast("Location deleted.");
+            }
+        }
+
+        // --- SETTINGS ---
+        async function renderSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                settingsData = await response.json();
+                
+                document.getElementById('setting-maintenance').checked = settingsData.maintenance;
+                document.getElementById('setting-signups').checked = settingsData.signups;
+                document.getElementById('setting-api').checked = settingsData.api;
+                document.getElementById('setting-email').checked = settingsData.email;
+                document.getElementById('setting-sms').checked = settingsData.sms;
+                document.getElementById('setting-banner').value = settingsData.banner;
+                
+                if (settingsData.lastUpdated) {
+                    const date = new Date(settingsData.lastUpdated).toLocaleString();
+                    document.getElementById('settingsLastUpdated').textContent = `Last Updated: ${date}`;
+                }
+            } catch (e) {
+                showToast("Error loading settings", "error");
+            }
+        }
+
+        async function saveSettings() {
+            const bannerInput = document.getElementById('setting-banner');
+            if (!bannerInput.value.trim()) {
+                showToast("System Announcement Banner cannot be empty", "error");
+                return;
+            }
+
+            const btn = document.getElementById('saveSettingsBtn');
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Saving...';
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            const payload = {
+                maintenance: document.getElementById('setting-maintenance').checked,
+                signups: document.getElementById('setting-signups').checked,
+                api: document.getElementById('setting-api').checked,
+                email: document.getElementById('setting-email').checked,
+                sms: document.getElementById('setting-sms').checked,
+                banner: bannerInput.value
+            };
+            
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                showToast("System settings updated.");
+            } catch (error) {
+                showToast("Failed to save settings", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+        // --- AUDIT LOGS ---
+        async function renderAuditLogsTable() {
+            const tbody = document.getElementById('adminAuditTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Loading...</td></tr>';
+            
+            try {
+                const response = await fetch('/api/audit-logs');
+                auditLogsData = await response.json();
+                filterAndSortAuditLogs();
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-red-500">Failed to load logs</td></tr>';
+            }
+        }
+
+        function filterAndSortAuditLogs() {
+            const query = document.getElementById('auditSearchInput').value.toLowerCase();
+            const startDateVal = document.getElementById('auditStartDate').value;
+            const endDateVal = document.getElementById('auditEndDate').value;
+            
+            const startDate = startDateVal ? new Date(startDateVal) : null;
+            const endDate = endDateVal ? new Date(endDateVal) : null;
+            if (endDate) endDate.setHours(23, 59, 59, 999);
+            
+            filteredAuditLogs = auditLogsData.filter(log => {
+                const matchesQuery = log.user.toLowerCase().includes(query) || 
+                    log.action.toLowerCase().includes(query) ||
+                    log.details.toLowerCase().includes(query);
+                
+                if (!matchesQuery) return false;
+                if (startDate && new Date(log.timestamp) < startDate) return false;
+                if (endDate && new Date(log.timestamp) > endDate) return false;
+                return true;
+            });
+
+            filteredAuditLogs.sort((a, b) => {
+                const dateA = new Date(a.timestamp);
+                const dateB = new Date(b.timestamp);
+                return auditSortDesc ? dateB - dateA : dateA - dateB;
+            });
+
+            currentAuditPage = 1;
+            renderAuditLogsPage();
+            
+            const btn = document.getElementById('auditSortBtn');
+            if(auditSortDesc) {
+                btn.innerHTML = '<i class="fas fa-sort-amount-down mr-1"></i> Newest';
+            } else {
+                btn.innerHTML = '<i class="fas fa-sort-amount-up mr-1"></i> Oldest';
+            }
+        }
+
+        function handleAuditSearch() {
+            filterAndSortAuditLogs();
+        }
+
+        function toggleAuditSort() {
+            auditSortDesc = !auditSortDesc;
+            filterAndSortAuditLogs();
+        }
+
+        async function clearAuditLogs() {
+            if(confirm("Are you sure you want to clear all audit logs? This cannot be undone.")) {
+                try {
+                    const response = await fetch('/api/audit-logs', { method: 'DELETE' });
+                    if (response.ok) {
+                        showToast("Audit logs cleared.");
+                        renderAuditLogsTable();
+                    } else {
+                        showToast("Failed to clear logs.", "error");
+                    }
+                } catch (e) {
+                    showToast("Network error.", "error");
+                }
+            }
+        }
+
+        function renderAuditLogsPage() {
+            const tbody = document.getElementById('adminAuditTableBody');
+            tbody.innerHTML = '';
+
+            const start = (currentAuditPage - 1) * auditItemsPerPage;
+            const end = start + auditItemsPerPage;
+            const pageData = filteredAuditLogs.slice(start, end);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">No logs found</td></tr>';
+            } else {
+                pageData.forEach(log => {
+                    const row = document.createElement('tr');
+                    const date = new Date(log.timestamp).toLocaleString();
+                    row.innerHTML = `
+                        <td class="text-gray-600 whitespace-nowrap">${date}</td>
+                        <td class="font-bold text-gray-800">${log.user}</td>
+                        <td><span class="bg-gray-100 text-xs px-2 py-1 rounded text-gray-700 font-mono">${log.action}</span></td>
+                        <td class="text-gray-600">${log.details}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            // Update Pagination UI
+            const totalPages = Math.ceil(filteredAuditLogs.length / auditItemsPerPage) || 1;
+            document.getElementById('auditPageInfo').textContent = `Page ${currentAuditPage} of ${totalPages}`;
+            document.getElementById('auditPrevBtn').disabled = currentAuditPage === 1;
+            document.getElementById('auditNextBtn').disabled = currentAuditPage === totalPages;
+        }
+
+        function changeAuditPage(step) {
+            const totalPages = Math.ceil(filteredAuditLogs.length / auditItemsPerPage) || 1;
+            const newPage = currentAuditPage + step;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentAuditPage = newPage;
+                renderAuditLogsPage();
+            }
+        }
+
+        function exportAuditLogsToCSV() {
+            if (filteredAuditLogs.length === 0) {
+                showToast("No data to export", "error");
+                return;
+            }
+
+            const headers = ["Timestamp", "User", "Action", "Details"];
+            const rows = filteredAuditLogs.map(log => [
+                new Date(log.timestamp).toLocaleString(),
+                log.user,
+                log.action,
+                `"${log.details.replace(/"/g, '""')}"` // Escape quotes in details
+            ]);
+
+            const csvContent = [
+                headers.join(","),
+                ...rows.map(r => r.join(","))
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "audit_logs.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadChart(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = 'chart.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function printAuditLogs() {
+            const printContent = `
+                <html>
+                <head>
+                    <title>Audit Logs Report</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; }
+                        h1 { color: #4D148C; border-bottom: 2px solid #FF6200; padding-bottom: 10px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 12px; }
+                        th { background-color: #f2f2f2; color: #333; }
+                        tr:nth-child(even) { background-color: #f9f9f9; }
+                    </style>
+                </head>
+                <body>
+                    <h1>FedEx System Audit Logs</h1>
+                    <p>Generated on: ${new Date().toLocaleString()}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredAuditLogs.map(log => `
+                                <tr>
+                                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                                    <td>${log.user}</td>
+                                    <td>${log.action}</td>
+                                    <td>${log.details}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        }
+
+        // --- UTILS & INIT ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let bgClass = type === 'error' ? 'bg-red-500' : 'bg-gray-800';
+            
+            toast.className = `${bgClass} text-white px-6 py-3 rounded shadow-lg transform transition-all duration-300 translate-x-full flex items-center mb-2 pointer-events-auto`;
+            toast.innerHTML = `<i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-3"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if(el) {
+                el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                el.classList.add('ring-2', 'ring-fedex-orange');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-fedex-orange'), 2000);
+            }
+        }
+
+        function simulateAction() {
+            showToast("Processing request...");
+            setTimeout(() => {
+                closeModal('serviceModal');
+                showToast("Action completed successfully!");
+            }, 1000);
+        }
+
+        // Event Listeners
+        document.getElementById('trackingInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') trackPackage();
+        });
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                if(event.target.id !== 'adminPanelModal') {
+                    event.target.classList.add('hidden');
+                }
+            }
+        }
+
+        // Clock Update
+        setInterval(() => {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const sysTime = document.getElementById('systemTime');
+            if(sysTime) sysTime.textContent = timeString;
+            
+            const dashClock = document.getElementById('dashboardClock');
+            if(dashClock) dashClock.textContent = timeString;
+        }, 1000);
+
+        // Dark Mode Logic
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('darkMode', isDark);
+            updateDarkModeIcon();
+        }
+
+        function updateDarkModeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('darkModeIcon');
+            if(icon) icon.className = isDark ? 'fas fa-sun text-xl' : 'fas fa-moon text-xl';
+        }
+
+        // Initialize Dark Mode
+        if (localStorage.getItem('darkMode') === 'true' || (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+        updateDarkModeIcon();
+
+        // Check for tracking param on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const trackId = params.get('track');
+            if (trackId) {
+                document.getElementById('trackingInput').value = trackId;
+                trackPackage();
+            }
+        });
+    </script>
+</body>
+</html>
