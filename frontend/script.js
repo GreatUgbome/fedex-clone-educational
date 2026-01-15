@@ -42,23 +42,23 @@ async function trackPackage() {
 // Enhanced package display
 function displayPackageInfo(pkg) {
     // Update status header
-    document.getElementById('statusTitle').textContent = pkg.statusText;
+    document.getElementById('statusTitle').textContent = pkg.statusText || pkg.statusDetail || pkg.status;
     document.getElementById('statusSubtitle').textContent = getStatusSubtitle(pkg.status);
-    document.getElementById('displayTracking').textContent = pkg.trackingNumber;
+    document.getElementById('displayTracking').textContent = pkg.trackingNumber || pkg.id;
     document.getElementById('displayService').textContent = pkg.service;
-    document.getElementById('displayDelivery').textContent = pkg.estimatedDelivery;
+    document.getElementById('displayDelivery').textContent = pkg.estimatedDelivery || pkg.deliveryDate;
 
     // Update status icon
     const statusIcon = document.getElementById('statusMainIcon');
     statusIcon.className = getStatusIcon(pkg.status);
 
     // Update basic info
-    document.getElementById('infoTracking').textContent = pkg.trackingNumber;
-    document.getElementById('infoStatus').textContent = pkg.statusText;
+    document.getElementById('infoTracking').textContent = pkg.trackingNumber || pkg.id;
+    document.getElementById('infoStatus').textContent = pkg.statusText || pkg.statusDetail || pkg.status;
     document.getElementById('infoStatus').className = `status-badge ${pkg.status}`;
     document.getElementById('infoService').textContent = pkg.service;
     document.getElementById('infoWeight').textContent = pkg.weight;
-    document.getElementById('infoDelivery').textContent = pkg.estimatedDelivery;
+    document.getElementById('infoDelivery').textContent = pkg.estimatedDelivery || pkg.deliveryDate;
     document.getElementById('infoDestination').textContent = pkg.destination;
 
     // Create timeline

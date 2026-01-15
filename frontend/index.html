@@ -1487,9 +1487,10 @@
             else if (data.status === 'in_transit') progressWidth = '50%';
 
             badge.className = `inline-block px-3 py-1 rounded-full text-sm font-bold text-white mb-2 shadow-sm ${statusColor}`;
-            badge.textContent = data.statusText.toUpperCase();
-            mainText.textContent = data.statusText;
-            dateText.textContent = data.estimatedDelivery;
+            const statusText = data.statusText || data.statusDetail || data.status || 'Unknown';
+            badge.textContent = statusText.toUpperCase();
+            mainText.textContent = statusText;
+            dateText.textContent = data.estimatedDelivery || data.deliveryDate || 'Date unavailable';
             displayId.innerHTML = `${id} <span class="ml-2 animate-pulse text-red-500 font-bold text-xs border border-red-200 bg-red-50 px-2 py-0.5 rounded-full"><i class="fas fa-circle text-[6px] align-middle mr-1"></i>LIVE</span>`;
             
             // Update Facts
