@@ -125,7 +125,7 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
-      import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, GoogleAuthProvider, signInWithPopup, sendEmailVerification, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDKJ1lwRWQC3eHyWYbrx3WpdXCrnKT1yGs",
@@ -149,7 +149,9 @@
         signOut,
         updateProfile,
         GoogleAuthProvider,
-        signInWithPopup
+        signInWithPopup,
+        sendEmailVerification,
+        sendPasswordResetEmail
       };
 
       // Auth State Observer to handle UI updates automatically
@@ -225,7 +227,10 @@
                         <input type="text" id="loginEmail" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-fedex-purple" placeholder="user@example.com" required>
                     </div>
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-gray-700 text-sm font-bold">Password</label>
+                            <a href="#" onclick="handleForgotPassword()" class="text-xs text-fedex-purple hover:underline" id="forgotPasswordLink">Forgot Password?</a>
+                        </div>
                         <input type="password" id="loginPassword" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-fedex-purple" placeholder="••••••" required>
                     </div>
                     <button type="submit" id="authSubmitBtn" class="w-full bg-fedex-orange text-white font-bold py-2 rounded hover:bg-orange-600 transition">Log In</button>
@@ -1626,6 +1631,7 @@
             const btn = document.getElementById('authSubmitBtn');
             const toggleText = document.getElementById('authToggleText');
             const toggleLink = document.getElementById('authToggleLink');
+            const forgotLink = document.getElementById('forgotPasswordLink');
             
             if (isSignupMode) {
                 title.textContent = "Sign Up";
@@ -1633,23 +1639,25 @@
                 btn.textContent = "Create Account";
                 toggleText.textContent = "Already have an account?";
                 toggleLink.textContent = "Log In";
+                if(forgotLink) forgotLink.style.display = 'none';
             } else {
                 title.textContent = "Log In";
                 nameGroup.classList.add('hidden');
                 btn.textContent = "Log In";
                 toggleText.textContent = "Don't have an account?";
                 toggleLink.textContent = "Sign Up";
+                if(forgotLink) forgotLink.style.display = 'block';
             }
         }
 
         async function handleAuth(e) {
             e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('loginEmail').value ? document.getElementById('loginEmail').value.trim() : '';
+            const password = document.getElementById('loginPassword').value ? document.getElementById('loginPassword').value.trim() : '';
+            const name = document.getElementById('signupName').value ? document.getElementById('signupName').value.trim() : '';
             
             // Use Firebase Auth from window object
-            const { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } = window.firebaseAuth;
+            const { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendEmailVerification } = window.firebaseAuth;
 
             try {
                 if (isSignupMode) {
@@ -1657,7 +1665,8 @@
                     if (name) {
                         await updateProfile(userCredential.user, { displayName: name });
                     }
-                    showToast("Account created successfully!");
+                    await sendEmailVerification(userCredential.user);
+                    showToast("Account created! Please check your email for verification.");
                 } else {
                     await signInWithEmailAndPassword(auth, email, password);
                     showToast("Logged in successfully!");
@@ -1667,8 +1676,31 @@
                 console.error(error);
                 let msg = "Authentication failed.";
                 if (error.code === 'auth/invalid-credential') msg = "Invalid email or password.";
+                if (error.code === 'auth/invalid-email') msg = "Please enter a valid email address.";
                 if (error.code === 'auth/email-already-in-use') msg = "Email already in use.";
                 if (error.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+                if (error.code === 'auth/configuration-not-found') msg = "Email/Password sign-in is not enabled in Firebase Console.";
+                if (error.code === 'auth/operation-not-allowed') msg = "This sign-in method is disabled in Firebase Console.";
+                showToast(msg, "error");
+            }
+        }
+
+        async function handleForgotPassword() {
+            const email = document.getElementById('loginEmail').value.trim();
+            if (!email) {
+                showToast("Please enter your email address first.", "error");
+                return;
+            }
+            
+            const { auth, sendPasswordResetEmail } = window.firebaseAuth;
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showToast("Password reset email sent! Check your inbox.");
+            } catch (error) {
+                console.error(error);
+                let msg = "Failed to send reset email.";
+                if (error.code === 'auth/user-not-found') msg = "No user found with this email.";
+                if (error.code === 'auth/invalid-email') msg = "Invalid email address.";
                 showToast(msg, "error");
             }
         }
@@ -2467,25 +2499,38 @@
             const address = document.getElementById('locAddressInput').value;
             const type = document.getElementById('locTypeInput').value;
 
-            if(!name || !address) return alert("Name and Address required");
-
-            if(id) {
-                const idx = MOCK_LOCATIONS.findIndex(l => l.id === id);
-                MOCK_LOCATIONS[idx] = { id, name, address, type };
-            } else {
-                const newId = 'L00' + (MOCK_LOCATIONS.length + 1);
-                MOCK_LOCATIONS.push({ id: newId, name, address, type });
+            if(!name || !address) {
+                showToast("Name and Address required", "error");
+                return;
             }
-            saveData('fedex_locations', MOCK_LOCATIONS);
-            renderLocationsTable();
-            closeModal('adminLocationModal');
-            showToast("Location saved successfully.");
+
+            const payload = { name, address, type };
+            let response;
+            
+            if(id) {
+                response = await fetch(`/api/locations/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                response = await fetch('/api/locations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+
+            if (response.ok) {
+                renderLocationsTable();
+                closeModal('adminLocationModal');
+                showToast("Location saved successfully.");
+            }
         }
 
-        function deleteLocation(id) {
+        async function deleteLocation(id) {
             if(confirm(`Delete location ${id}?`)) {
-                MOCK_LOCATIONS = MOCK_LOCATIONS.filter(l => l.id !== id);
-                saveData('fedex_locations', MOCK_LOCATIONS);
+                await fetch(`/api/locations/${id}`, { method: 'DELETE' });
                 renderLocationsTable();
                 showToast("Location deleted.");
             }

@@ -1,769 +1,783 @@
 require('dotenv').config();
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
+const multer = require('multer');
 const path = require('path');
-const os = require('os');
-const functions = require('firebase-functions');
+const fs = require('fs');
+
+admin.initializeApp();
 
 const app = express();
+const PORT = process.env.PORT || 5002;
+// Base URL for emails - Update this to your Firebase Hosting URL in production
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
-app.use(cors({
-  origin: '*', // Allow requests from any origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors({ origin: true }));
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve static files from the frontend directory
-app.use(express.static(path.join(__dirname, '../frontend')));
-
-// Handle favicon requests to prevent 404 errors
+// Suppress browser noise (favicon and chrome devtools probe)
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.sendStatus(404));
 
-// Enhanced test data with more realistic FedEx information
-let packages = [
-  {
-    trackingNumber: "123456789012",
-    status: "in_transit",
-    statusText: "In transit",
-    service: "FedEx Express",
-    weight: "2.5 lbs",
-    dimensions: "10x8x4 in.",
-    pieces: 1,
-    estimatedDelivery: "Mon 12/20/2024 by 10:30 am",
-    sender: "AMAZON FULFILLMENT SERVICES, INC.",
-    recipient: "JOHN DOE",
-    destination: "123 MAIN ST, NEW YORK, NY 10001",
-    timeline: [
-      {
-        date: "2024-12-15 14:30:00",
-        location: "MEMPHIS, TN",
-        description: "In transit to destination facility",
-        status: "in_transit"
-      },
-      {
-        date: "2024-12-15 09:15:00",
-        location: "MEMPHIS, TN",
-        description: "Arrived at FedEx hub",
-        status: "arrived"
-      },
-      {
-        date: "2024-12-14 16:45:00",
-        location: "INDIANAPOLIS, IN",
-        description: "Picked up",
-        status: "picked_up"
-      },
-      {
-        date: "2024-12-14 12:00:00",
-        location: "INDIANAPOLIS, IN",
-        description: "Shipment information sent to FedEx",
-        status: "created"
-      }
-    ]
-  },
-  {
-    trackingNumber: "987654321098",
-    status: "out_for_delivery",
-    statusText: "Out for delivery",
-    service: "FedEx Ground",
-    weight: "5.0 lbs",
-    dimensions: "12x10x6 in.",
-    pieces: 2,
-    estimatedDelivery: "Today by 8:00 pm",
-    sender: "WALMART DISTRIBUTION CENTER",
-    recipient: "JANE SMITH",
-    destination: "456 OAK AVENUE, CHICAGO, IL 60601",
-    timeline: [
-      {
-        date: "2024-12-15 08:00:00",
-        location: "CHICAGO, IL",
-        description: "Out for delivery",
-        status: "out_for_delivery"
-      },
-      {
-        date: "2024-12-15 06:30:00",
-        location: "CHICAGO, IL",
-        description: "At local FedEx facility",
-        status: "arrived"
-      },
-      {
-        date: "2024-12-14 20:30:00",
-        location: "CHICAGO, IL",
-        description: "Arrived at FedEx facility",
-        status: "arrived"
-      },
-      {
-        date: "2024-12-13 14:15:00",
-        location: "MEMPHIS, TN",
-        description: "Departed FedEx location",
-        status: "in_transit"
-      }
-    ]
-  },
-  {
-    trackingNumber: "555555555555",
-    status: "delivered",
-    statusText: "Delivered",
-    service: "FedEx Express",
-    weight: "1.8 lbs",
-    dimensions: "8x6x2 in.",
-    pieces: 1,
-    estimatedDelivery: "Delivered on 12/14/2024",
-    sender: "APPLE INC.",
-    recipient: "ROBERT JOHNSON",
-    destination: "789 PINE STREET, SAN FRANCISCO, CA 94102",
-    timeline: [
-      {
-        date: "2024-12-14 14:25:00",
-        location: "SAN FRANCISCO, CA",
-        description: "Delivered - Left at front door",
-        status: "delivered"
-      },
-      {
-        date: "2024-12-14 12:30:00",
-        location: "SAN FRANCISCO, CA",
-        description: "On FedEx vehicle for delivery",
-        status: "out_for_delivery"
-      },
-      {
-        date: "2024-12-14 08:15:00",
-        location: "SAN FRANCISCO, CA",
-        description: "At local FedEx facility",
-        status: "arrived"
-      },
-      {
-        date: "2024-12-13 22:45:00",
-        location: "OAKLAND, CA",
-        description: "Departed FedEx location",
-        status: "in_transit"
-      }
-    ]
-  }
-];
+// Middleware to check DB connection before handling API requests
+app.use('/api', async (req, res, next) => {
+    if (mongoose.connection.readyState !== 1) {
+        try {
+            await connectDB();
+        } catch (e) {
+            console.error("DB Connection failed in middleware:", e);
+        }
+    }
+    
+    if (mongoose.connection.readyState !== 1) {
+        return res.status(503).json({ error: 'System is offline (Database not connected). Please check server logs.' });
+    }
+    next();
+});
 
-// Mock Database for Users
-let users = [
-  { id: 'U001', name: 'Admin Administrator', email: 'admin@fedex.com', password: 'password123', role: 'Admin' },
-  { id: 'U002', name: 'John Doe', email: 'john@example.com', password: 'password123', role: 'Customer' },
-  { id: 'U003', name: 'Sarah Connor', email: 'sarah@example.com', password: 'password123', role: 'Support' }
-];
+// --- MongoDB Setup ---
+// Global connection promise to reuse across function invocations
+let connPromise = null;
+const connectDB = async () => {
+    if (mongoose.connection.readyState === 1) {
+        return mongoose;
+    }
 
-// Mock Database for Locations
-let locations = [
-  { id: 'L001', name: 'Memphis World Hub', address: 'Memphis, TN', type: 'Sort Facility' },
-  { id: 'L002', name: 'Downtown Branch', address: '123 Main St, New York, NY', type: 'Retail Store' },
-  { id: 'L003', name: 'LAX Distribution', address: 'Los Angeles, CA', type: 'Distribution Center' }
-];
+    if (connPromise) {
+        return connPromise;
+    }
 
-// Mock Database for Settings
-const DEFAULT_SETTINGS = {
-  maintenance: false,
-  signups: true,
-  api: true,
-  email: true,
-  sms: false,
-  banner: 'Welcome to the new FedEx tracking system.'
+    connPromise = mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://greatugbome5_db_user:76TtO6KU4hIrf0lv@cluster0.yas9t3a.mongodb.net/fedex-clone?retryWrites=true&w=majority&appName=Cluster0', {
+        serverSelectionTimeoutMS: 5000 // Fail fast in serverless
+    }).then(async (m) => {
+        console.log('MongoDB Connected');
+        await seedDatabase();
+        return m;
+    }).catch(err => {
+        console.error('MongoDB Connection Error:', err.message);
+        connPromise = null;
+        throw err;
+    });
+
+    return connPromise;
 };
 
-let settings = { ...DEFAULT_SETTINGS };
+// Schemas
+const ShipmentSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    status: String,
+    statusDetail: String,
+    service: String,
+    deliveryDate: String,
+    weight: String,
+    dimensions: String,
+    pieces: Number,
+    destination: String,
+    coordinates: { lat: Number, lng: Number },
+    sender: String,
+    recipient: String,
+    timeline: [{
+        date: String,
+        status: String,
+        location: String,
+        icon: String
+    }],
+    proofOfDelivery: String,
+    createdBy: String
+});
 
-// Mock Database for Quotes
-const quotes = [
-  "The only way to do great work is to love what you do.",
-  "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-  "Believe you can and you're halfway there.",
-  "The future belongs to those who believe in the beauty of their dreams.",
-  "Strive not to be a success, but rather to be of value."
-];
+const UserSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    email: { type: String, unique: true, sparse: true },
+    password: { type: String, required: true },
+    role: { type: String, default: 'user' },
+    resetToken: String,
+    resetTokenExpiry: Date,
+    isVerified: { type: Boolean, default: false },
+    verificationToken: String
+});
 
-// Mock Database for Announcements
-let announcements = [
-  { id: 'A1', title: 'Welcome to FedEx', message: 'We are happy to have you here.', date: new Date().toISOString().split('T')[0] }
-];
+const PickupSchema = new mongoose.Schema({
+    address: String,
+    date: String,
+    time: String,
+    packages: Number,
+    weight: String,
+    instructions: String,
+    status: { type: String, default: 'Scheduled' }
+});
 
-// Mock Database for Audit Logs
-let auditLogs = [];
+const ActivitySchema = new mongoose.Schema({
+    username: String,
+    action: String,
+    details: String,
+    timestamp: { type: Date, default: Date.now }
+});
 
-function logAction(user, action, details) {
-  const log = {
-    id: `LOG${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    user: user || 'System',
-    action,
-    details
-  };
-  auditLogs.unshift(log);
-  if (auditLogs.length > 50) auditLogs.pop();
+const FeedbackSchema = new mongoose.Schema({
+    rating: Number,
+    comment: String,
+    username: String,
+    timestamp: { type: Date, default: Date.now }
+});
+
+const SettingSchema = new mongoose.Schema({
+    key: { type: String, required: true, unique: true },
+    value: mongoose.Schema.Types.Mixed
+});
+
+const EmailSchema = new mongoose.Schema({
+    recipient: String,
+    subject: String,
+    message: String,
+    status: { type: String, enum: ['sent', 'draft'], default: 'sent' },
+    timestamp: { type: Date, default: Date.now }
+});
+
+const Shipment = mongoose.model('Shipment', ShipmentSchema);
+const User = mongoose.model('User', UserSchema);
+const Pickup = mongoose.model('Pickup', PickupSchema);
+const Activity = mongoose.model('Activity', ActivitySchema);
+const Feedback = mongoose.model('Feedback', FeedbackSchema);
+const Setting = mongoose.model('Setting', SettingSchema);
+const Email = mongoose.model('Email', EmailSchema);
+
+// --- Email Setup (Nodemailer) ---
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+// --- File Upload Setup (Multer) ---
+// Use disk storage for Render/Local
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadPath = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+        cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage });
+
+app.post('/api/upload', upload.single('image'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    res.json({ path: req.file.filename });
+});
+
+function generateEmailTemplate(title, message, buttonText, buttonLink, footer) {
+    const footerContent = footer || `If the button above doesn't work, copy and paste this link into your browser: <br> <a href="${buttonLink}">${buttonLink}</a>`;
+    return `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #4D148C;">${title}</h2>
+            <p>${message}</p>
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="${buttonLink}" style="background-color: #FF6200; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">${buttonText}</a>
+            </p>
+            <p style="font-size: 12px; color: #666;">${footerContent}</p>
+        </div>
+    `;
 }
 
-// Routes
+function sendStatusEmail(shipmentId, newStatus) {
+    const mailOptions = {
+        from: 'fedex-cl@noreply.com',
+        to: 'recipient@example.com', // In a real app, this would be shipment.recipientEmail
+        subject: `Shipment Update: ${shipmentId}`,
+        text: `The status of your shipment ${shipmentId} has changed to: ${newStatus}`
+    };
+    transporter.sendMail(mailOptions, (err) => {
+        if (err) console.log('Email error:', err);
+    });
+}
 
-app.get('/api/carbon/:id', (req, res) => {
-    const trackingId = req.params.id;
+async function logActivity(username, action, details) {
+    try {
+        await Activity.create({ username, action, details });
+    } catch (e) {
+        console.error("Activity Log Error:", e);
+    }
+}
+
+// Auth Routes
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    if (user && await bcrypt.compare(password, user.password)) {
+        if (!user.isVerified) return res.status(403).json({ error: 'Please verify your email before logging in.' });
+        await logActivity(user.username, 'Login', 'User logged in');
+        res.json({ username: user.username, role: user.role, email: user.email, _id: user._id });
+    } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+    }
+});
+
+app.post('/api/signup', async (req, res) => {
+    const { username, password, email } = req.body;
+    const existing = await User.findOne({ username });
+    if (existing) {
+        return res.status(400).json({ error: 'User already exists' });
+    }
     
-    // Mock calculation: Generate a random value between 0.5 and 5.0 kg
-    // In a real app, you would calculate this based on weight and distance
-    const estimatedCarbon = (Math.random() * (5.0 - 0.5) + 0.5).toFixed(1);
+    const verificationToken = crypto.randomBytes(20).toString('hex');
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, password: hashedPassword, email, role: 'user', isVerified: false, verificationToken });
+    await newUser.save();
+    
+    await logActivity(username, 'Signup', 'Account created');
+
+    // Send Verification Email
+    const verifyLink = `${BASE_URL}/?verifyToken=${verificationToken}`;
+    const mailOptions = {
+        from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+        to: email,
+        subject: 'Welcome! Please Verify Your Email',
+        html: generateEmailTemplate(
+            'Welcome to FedEx CL!',
+            'Thank you for signing up. To start shipping and tracking packages, please verify your email address.',
+            'Verify Email Address',
+            verifyLink
+        )
+    };
+
+    transporter.sendMail(mailOptions, (err) => {
+        if (err) console.log('Email error:', err);
+    });
+
+    // Do not auto-login, require verification
+    res.json({ message: 'Signup successful! Please check your email to verify your account.' });
+});
+
+// Forgot Password - Request Link
+app.post('/api/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User with this email not found' });
+
+    // Generate Token
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetToken = token;
+    user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // Send Email
+    const resetLink = `${BASE_URL}/?resetToken=${token}`;
+    
+    const mailOptions = {
+        from: '"FedEx Support" <fedex-cl@noreply.com>',
+        to: user.email,
+        subject: 'Password Reset Request',
+        html: generateEmailTemplate(
+            'Reset Your Password',
+            'You requested a password reset. Click the button below to set a new password:',
+            'Reset Password',
+            resetLink,
+            "If you didn't request this, please ignore this email."
+        )
+    };
+
+    transporter.sendMail(mailOptions, (err) => {
+        if (err) return res.status(500).json({ error: 'Error sending email' });
+        res.json({ message: 'Reset link sent to your email' });
+    });
+});
+
+// Reset Password - Submit New Password
+app.post('/api/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+    const user = await User.findOne({ resetToken: token, resetTokenExpiry: { $gt: Date.now() } });
+
+    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetToken = undefined;
+    user.resetTokenExpiry = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successful. You can now log in.' });
+});
+
+// Verify Email
+app.post('/api/verify-email', async (req, res) => {
+    const { token } = req.body;
+    const user = await User.findOne({ verificationToken: token });
+    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
+    
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+    await logActivity(user.username, 'Verification', 'Email verified successfully');
+    res.json({ 
+        message: 'Email verified! You are now logged in.',
+        user: { username: user.username, role: user.role, email: user.email, _id: user._id }
+    });
+});
+
+// Resend Verification Email
+app.post('/api/resend-verification', async (req, res) => {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.isVerified) return res.status(400).json({ error: 'Account already verified' });
+
+    const verificationToken = crypto.randomBytes(20).toString('hex');
+    user.verificationToken = verificationToken;
+    await user.save();
+
+    const verifyLink = `${BASE_URL}/?verifyToken=${verificationToken}`;
+    const mailOptions = {
+        from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+        to: email,
+        subject: 'Verify Your Email Address',
+        html: generateEmailTemplate(
+            'Verify Your Email',
+            'We received a request to resend your verification link. Click the button below to verify your account:',
+            'Verify Email Address',
+            verifyLink,
+            "If you didn't request this, please ignore this email."
+        )
+    };
+
+    transporter.sendMail(mailOptions, (err) => {
+        if (err) return res.status(500).json({ error: 'Error sending email' });
+        res.json({ message: 'Verification email sent' });
+    });
+});
+
+// Feedback Route
+app.post('/api/feedback', async (req, res) => {
+    try {
+        const feedback = new Feedback(req.body);
+        await feedback.save();
+        res.json({ message: 'Thank you for your feedback!' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Settings Routes
+app.get('/api/settings', async (req, res) => {
+    try {
+        const settings = await Setting.find({});
+        const settingsMap = {};
+        settings.forEach(s => settingsMap[s.key] = s.value);
+        res.json(settingsMap);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/settings', async (req, res) => {
+    const { key, value } = req.body;
+    await Setting.findOneAndUpdate({ key }, { value }, { upsert: true });
+    res.json({ message: 'Setting updated' });
+});
+
+// Get all shipment IDs (for Admin Panel)
+app.get('/api/shipments', async (req, res) => {
+    const ships = await Shipment.find({}, 'id status service');
+    res.json(ships);
+});
+
+// Get all shipments with full details for CSV Export
+app.get('/api/shipments/export', async (req, res) => {
+    const ships = await Shipment.find({});
+    res.json(ships);
+});
+
+// Get shipments for a specific user
+app.get('/api/user/:username/shipments', async (req, res) => {
+    const { username } = req.params;
+    const ships = await Shipment.find({ createdBy: username });
+    res.json(ships);
+});
+
+// Get User Activity
+app.get('/api/user/:username/activity', async (req, res) => {
+    const { username } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
+    const total = await Activity.countDocuments({ username });
+    const logs = await Activity.find({ username }).sort({ timestamp: -1 }).skip(skip).limit(limit);
     
     res.json({
-        trackingNumber: trackingId,
-        amount: estimatedCarbon,
-        unit: 'kg CO2e'
+        logs,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit)
     });
 });
 
-app.get('/api/track/:trackingNumber', (req, res) => {
-  const trackingNumber = req.params.trackingNumber;
-  if (!/^\d+$/.test(trackingNumber)) {
-    return res.status(400).json({ 
-      error: true,
-      message: "Invalid tracking number format. Only numeric values are allowed."
-    });
-  }
+// --- User Profile Routes ---
 
-  const pkg = packages.find(p => p.trackingNumber === trackingNumber);
-  
-  if (!pkg) {
-    return res.status(404).json({ 
-      error: true,
-      message: "Tracking number not found. Please check the number and try again."
-    });
-  }
-  
-  res.json(pkg);
+// Get Profile
+app.get('/api/profile/:username', async (req, res) => {
+    const { username } = req.params;
+    const user = await User.findOne({ username }, '-password -resetToken -resetTokenExpiry');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
 });
 
-app.get('/api/track/:trackingNumber/route', (req, res) => {
-  const { trackingNumber } = req.params;
-  const pkg = packages.find(p => p.trackingNumber === trackingNumber);
-  
-  if (!pkg) {
-    return res.status(404).json({ error: true, message: "Package not found" });
-  }
-
-  // Mock coordinates for major cities to simulate a route
-  const cityCoords = {
-    "MEMPHIS, TN": { lat: 35.1495, lng: -90.0490 },
-    "INDIANAPOLIS, IN": { lat: 39.7684, lng: -86.1581 },
-    "NEW YORK, NY": { lat: 40.7128, lng: -74.0060 },
-    "CHICAGO, IL": { lat: 41.8781, lng: -87.6298 },
-    "SAN FRANCISCO, CA": { lat: 37.7749, lng: -122.4194 },
-    "OAKLAND, CA": { lat: 37.8044, lng: -122.2711 }
-  };
-
-  const route = pkg.timeline
-    .map(event => {
-      const city = Object.keys(cityCoords).find(c => event.location.includes(c));
-      return city ? { ...cityCoords[city], location: event.location, date: event.date } : null;
-    })
-    .filter(Boolean);
-
-  res.json(route);
-});
-
-// Get all packages (for Admin Dashboard)
-app.get('/api/packages', (req, res) => {
-  // In a real app, you would implement pagination here
-  res.json(packages);
-});
-
-// Alias for backward compatibility or testing
-app.get('/api/test-packages', (req, res) => res.json(packages));
-
-app.get('/api/search', (req, res) => {
-  const sender = req.query.sender;
-  
-  if (!sender) {
-    return res.status(400).json({ 
-      error: true, 
-      message: "Sender name is required" 
-    });
-  }
-
-  const results = packages.filter(p => p.sender.toLowerCase().includes(sender.toLowerCase()));
-  res.json(results);
-});
-
-app.get('/api/user/shipments', (req, res) => {
-  const username = req.query.user;
-  if (!username) {
-    return res.status(400).json({ error: true, message: "User parameter required" });
-  }
-  
-  // Case-insensitive matching for sender or recipient
-  const userShipments = packages.filter(p => 
-    (p.sender && p.sender.toLowerCase() === username.toLowerCase()) || 
-    (p.recipient && p.recipient.toLowerCase() === username.toLowerCase())
-  );
-  
-  res.json(userShipments);
-});
-
-app.post('/api/packages', (req, res) => {
-  const newPackage = req.body;
-  
-  // Basic validation
-  if (!newPackage.trackingNumber || !newPackage.sender || !newPackage.recipient) {
-    return res.status(400).json({ 
-      error: true, 
-      message: "Missing required fields (trackingNumber, sender, recipient)" 
-    });
-  }
-
-  // Check for duplicate tracking number
-  if (packages.find(p => p.trackingNumber === newPackage.trackingNumber)) {
-    return res.status(409).json({ error: true, message: "Tracking number already exists" });
-  }
-
-  packages.push(newPackage);
-  logAction('Admin', 'CREATE_PACKAGE', `Created package ${newPackage.trackingNumber}`);
-  res.status(201).json(newPackage);
-});
-
-app.post('/api/packages/bulk', (req, res) => {
-  const newPackages = req.body;
-  
-  if (!Array.isArray(newPackages)) {
-    return res.status(400).json({ error: true, message: "Input must be an array of packages" });
-  }
-
-  let addedCount = 0;
-  let errors = [];
-
-  newPackages.forEach(pkg => {
-    // Basic validation
-    if (!pkg.trackingNumber || !pkg.sender || !pkg.recipient) {
-      errors.push(`Missing fields for ${pkg.trackingNumber || 'unknown'}`);
-      return;
-    }
+// Update Profile
+app.put('/api/profile/:username', async (req, res) => {
+    const { username } = req.params;
+    const { email, password, newUsername } = req.body;
     
-    // Check duplicate
-    if (packages.find(p => p.trackingNumber === pkg.trackingNumber)) {
-      errors.push(`Duplicate tracking number: ${pkg.trackingNumber}`);
-      return;
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (email) user.email = email;
+    if (newUsername && newUsername !== username) {
+        const existing = await User.findOne({ username: newUsername });
+        if (existing) return res.status(400).json({ error: 'Username already taken' });
+        user.username = newUsername;
+    }
+    if (password && password.trim() !== '') user.password = await bcrypt.hash(password, 10);
+    
+    await user.save();
+    await logActivity(user.username, 'Profile Update', 'Updated profile information');
+    res.json({ message: 'Profile updated successfully', user: { username: user.username, role: user.role, email: user.email, _id: user._id } });
+});
+
+// Delete Profile (Self)
+app.delete('/api/profile/:username', async (req, res) => {
+    const { username } = req.params;
+    try {
+        const result = await User.deleteOne({ username });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ message: 'Account deleted successfully' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- User Management Routes (Admin) ---
+
+// Get all users
+app.get('/api/users', async (req, res) => {
+    const users = await User.find({}, 'username role _id');
+    res.json(users);
+});
+
+// Create User (Admin)
+app.post('/api/admin/user', async (req, res) => {
+    const { username, password, role } = req.body;
+    const existing = await User.findOne({ username });
+    if (existing) return res.status(400).json({ error: 'User already exists' });
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, password: hashedPassword, role });
+    await newUser.save();
+    res.json({ message: 'User created' });
+});
+
+// Update User
+app.put('/api/admin/user/:id', async (req, res) => {
+    const { id } = req.params;
+    const { username, password, role } = req.body;
+    
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    if (username) user.username = username;
+    if (role) user.role = role;
+    if (password && password.trim() !== '') user.password = await bcrypt.hash(password, 10);
+    
+    await user.save();
+    res.json({ message: 'User updated' });
+});
+
+// Delete User
+app.delete('/api/admin/user/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await User.findByIdAndDelete(id);
+        res.json({ message: 'User deleted' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Send Custom Email (Admin)
+app.post('/api/admin/send-email', upload.array('attachments'), async (req, res) => {
+    const { email, subject, message, draftId } = req.body;
+    
+    const attachments = req.files ? req.files.map(file => ({
+        filename: file.originalname,
+        path: file.path
+    })) : [];
+
+    const mailOptions = {
+        from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+        to: email,
+        subject: subject,
+        // Use BASE_URL for links
+        html: generateEmailTemplate(subject, message, 'Visit Dashboard', BASE_URL),
+        attachments: attachments
+    };
+
+    transporter.sendMail(mailOptions, async (err) => {
+        if (err) return res.status(500).json({ error: 'Error sending email' });
+        
+        // Log sent email
+        await Email.create({ recipient: email, subject, message, status: 'sent' });
+        
+        // Remove draft if exists
+        if (draftId) await Email.findByIdAndDelete(draftId);
+
+        res.json({ message: 'Email sent successfully' });
+    });
+});
+
+// Send Bulk Email (Admin)
+app.post('/api/admin/send-bulk-email', upload.array('attachments'), async (req, res) => {
+    const { subject, message } = req.body;
+    
+    try {
+        const users = await User.find({ email: { $exists: true, $ne: null } }, 'email');
+        const emails = users.map(u => u.email).filter(e => e && e.includes('@'));
+
+        if (emails.length === 0) {
+            return res.status(400).json({ error: 'No users with email addresses found' });
+        }
+
+        const attachments = req.files ? req.files.map(file => ({
+            filename: file.originalname,
+            path: file.path
+        })) : [];
+
+        const mailOptions = {
+            from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+            bcc: emails,
+            subject: subject,
+            html: generateEmailTemplate(subject, message, 'Visit Dashboard', BASE_URL),
+            attachments: attachments
+        };
+
+        transporter.sendMail(mailOptions, async (err) => {
+            if (err) return res.status(500).json({ error: 'Error sending email' });
+            
+            await Email.create({ recipient: 'All Users (Bulk)', subject, message, status: 'sent' });
+            
+            res.json({ message: `Bulk email sent to ${emails.length} users` });
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Email Management Routes (Drafts & Logs) ---
+
+// Get Emails (Sent or Drafts)
+app.get('/api/admin/emails', async (req, res) => {
+    const { status } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = status ? { status } : {};
+    try {
+        const total = await Email.countDocuments(query);
+        const emails = await Email.find(query).sort({ timestamp: -1 }).skip(skip).limit(limit);
+        res.json({
+            emails,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit)
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Delete Email (Draft or Sent)
+app.delete('/api/admin/email/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await Email.findByIdAndDelete(id);
+        res.json({ message: 'Email deleted' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Save Draft
+app.post('/api/admin/email/draft', async (req, res) => {
+    const { recipient, subject, message, id } = req.body;
+    try {
+        if (id) {
+            await Email.findByIdAndUpdate(id, { recipient, subject, message, timestamp: Date.now() });
+        } else {
+            await Email.create({ recipient, subject, message, status: 'draft' });
+        }
+        res.json({ message: 'Draft saved' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Create New Shipment
+app.post('/api/shipment', async (req, res) => {
+    const { id, ...data } = req.body;
+    if (!id) return res.status(400).json({ error: 'Tracking ID is required' });
+    
+    const existing = await Shipment.findOne({ id });
+    if (existing) return res.status(400).json({ error: 'Shipment already exists' });
+    
+    const newShipment = new Shipment({ id, ...data });
+    await newShipment.save();
+    if (data.createdBy) {
+        await logActivity(data.createdBy, 'Create Shipment', `Created shipment ${id}`);
+    }
+    res.json({ message: 'Shipment created', id, data: newShipment });
+});
+
+// Update Existing Shipment
+app.put('/api/shipment/:id', async (req, res) => {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    const shipment = await Shipment.findOne({ id });
+    if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
+
+    // If status changed, send email
+    if (updates.status && updates.status !== shipment.status) {
+        sendStatusEmail(id, updates.status);
+        await logActivity('System', 'Status Update', `Shipment ${id} updated to ${updates.status}`);
     }
 
-    packages.push(pkg);
-    addedCount++;
-  });
-
-  logAction('Admin', 'BULK_IMPORT', `Imported ${addedCount} packages. Errors: ${errors.length}`);
-  res.json({ success: true, added: addedCount, errors: errors });
+    Object.assign(shipment, updates);
+    await shipment.save();
+    res.json({ message: 'Shipment updated' });
 });
 
-// Update Package
-app.put('/api/packages/:trackingNumber', (req, res) => {
-  const { trackingNumber } = req.params;
-  const index = packages.findIndex(p => p.trackingNumber === trackingNumber);
-  
-  if (index === -1) {
-    return res.status(404).json({ error: true, message: "Package not found" });
-  }
-
-  // Merge existing package with updates
-  packages[index] = { ...packages[index], ...req.body };
-  logAction('Admin', 'UPDATE_PACKAGE', `Updated package ${trackingNumber}`);
-  res.json(packages[index]);
-});
-
-// Delete Package
-app.delete('/api/packages/:trackingNumber', (req, res) => {
-  const { trackingNumber } = req.params;
-  const initialLength = packages.length;
-  packages = packages.filter(p => p.trackingNumber !== trackingNumber);
-  
-  if (packages.length === initialLength) {
-    return res.status(404).json({ error: true, message: "Package not found" });
-  }
-  
-  logAction('Admin', 'DELETE_PACKAGE', `Deleted package ${trackingNumber}`);
-  res.json({ success: true, message: "Package deleted successfully" });
-});
-
-// --- User Routes ---
-app.get('/api/users', (req, res) => res.json(users.map(({password, ...u}) => u)));
-
-app.post('/api/users', (req, res) => {
-  const newUser = { id: `U${Date.now()}`, ...req.body };
-  users.push(newUser);
-  logAction('Admin', 'CREATE_USER', `Created user ${newUser.email}`);
-  res.json(newUser);
-});
-
-app.put('/api/user/profile', (req, res) => {
-  const { id, currentPassword, newPassword } = req.body;
-  const user = users.find(u => u.id === id);
-
-  if (!user) return res.status(404).json({ success: false, message: "User not found" });
-  
-  if (user.password !== currentPassword) {
-    return res.status(401).json({ success: false, message: "Incorrect current password" });
-  }
-
-  user.password = newPassword;
-  logAction(user.name, 'UPDATE_PROFILE', 'User updated password');
-  res.json({ success: true, message: "Password updated successfully" });
-});
-
-app.put('/api/users/:id', (req, res) => {
-  const { id } = req.params;
-  const index = users.findIndex(u => u.id === id);
-  if (index !== -1) {
-    users[index] = { ...users[index], ...req.body };
-    logAction('Admin', 'UPDATE_USER', `Updated user ${id}`);
-    res.json(users[index]);
-  } else {
-    res.status(404).json({ message: "User not found" });
-  }
-});
-
-app.delete('/api/users/:id', (req, res) => {
-  users = users.filter(u => u.id !== req.params.id);
-  logAction('Admin', 'DELETE_USER', `Deleted user ${req.params.id}`);
-  res.json({ success: true });
-});
-
-// --- Location Routes ---
-app.get('/api/locations', (req, res) => res.json(locations));
-
-app.post('/api/locations', (req, res) => {
-  const newLoc = { id: `L${Date.now()}`, ...req.body };
-  locations.push(newLoc);
-  logAction('Admin', 'CREATE_LOCATION', `Created location ${newLoc.name}`);
-  res.json(newLoc);
-});
-
-app.put('/api/locations/:id', (req, res) => {
-  const { id } = req.params;
-  const index = locations.findIndex(l => l.id === id);
-  if (index !== -1) {
-    locations[index] = { ...locations[index], ...req.body };
-    logAction('Admin', 'UPDATE_LOCATION', `Updated location ${id}`);
-    res.json(locations[index]);
-  } else {
-    res.status(404).json({ message: "Location not found" });
-  }
-});
-
-app.delete('/api/locations/:id', (req, res) => {
-  locations = locations.filter(l => l.id !== req.params.id);
-  logAction('Admin', 'DELETE_LOCATION', `Deleted location ${req.params.id}`);
-  res.json({ success: true });
-});
-
-// --- Settings Routes ---
-app.get('/api/settings', (req, res) => res.json(settings));
-
-app.post('/api/settings', (req, res) => {
-  settings = { ...settings, ...req.body, lastUpdated: new Date().toISOString() };
-  logAction('Admin', 'UPDATE_SETTINGS', 'System settings updated');
-  res.json(settings);
-});
-
-app.post('/api/settings/reset', (req, res) => {
-  settings = { ...DEFAULT_SETTINGS, lastUpdated: new Date().toISOString() };
-  logAction('Admin', 'RESET_SETTINGS', 'System settings reset');
-  res.json(settings);
-});
-
-app.post('/api/signup', (req, res) => {
-  const { name, email, password } = req.body;
-  
-  if (!name || !email || !password) {
-    return res.status(400).json({ success: false, message: "All fields are required" });
-  }
-
-  if (users.find(u => u.email === email)) {
-    return res.status(400).json({ success: false, message: "User already exists" });
-  }
-
-  const newUser = {
-    id: `U${Date.now()}`,
-    name,
-    email,
-    password,
-    role: 'Customer'
-  };
-
-  users.push(newUser);
-  logAction('System', 'SIGNUP', `New user signed up: ${email}`);
-  res.json({ success: true, user: { id: newUser.id, name: newUser.name, role: newUser.role } });
-});
-
-app.post('/api/login', (req, res) => {
-  const { email, password } = req.body;
-
-  // Mock Admin Credentials
-  if (email === 'Admin' && password === 'Admin123') {
-    return res.json({ 
-      success: true, 
-      user: { id: 'ADMIN', name: 'Administrator', role: 'admin' } 
-    });
-  }
-
-  // Check against mock database
-  const user = users.find(u => u.email === email && u.password === password);
-
-  if (user) {
-    return res.json({ 
-      success: true, 
-      user: { id: user.id, name: user.name, role: user.role.toLowerCase() } 
-    });
-  }
-
-  res.status(401).json({ success: false, message: 'Invalid credentials' });
-});
-
-// --- Audit Logs Routes ---
-app.get('/api/audit-logs', (req, res) => res.json(auditLogs));
-
-app.delete('/api/audit-logs', (req, res) => {
-  auditLogs = [];
-  logAction('Admin', 'CLEAR_LOGS', 'All audit logs cleared');
-  res.json({ success: true });
-});
-
-// --- Statistics Routes ---
-app.get('/api/stats/shipments-by-status', (req, res) => {
-  const stats = packages.reduce((acc, pkg) => {
-    const status = pkg.status || 'unknown';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
-  res.json(stats);
-});
-
-app.get('/api/stats/shipments-by-service', (req, res) => {
-  const stats = packages.reduce((acc, pkg) => {
-    const service = pkg.service || 'Unknown';
-    acc[service] = (acc[service] || 0) + 1;
-    return acc;
-  }, {});
-  res.json(stats);
-});
-
-app.get('/api/stats/average-delivery-time', (req, res) => {
-  const deliveredPackages = packages.filter(p => p.status === 'delivered');
-  
-  if (deliveredPackages.length === 0) {
-    return res.json({ averageHours: 0, count: 0 });
-  }
-
-  let totalHours = 0;
-  let count = 0;
-
-  deliveredPackages.forEach(pkg => {
-    const createdEvent = pkg.timeline.find(e => e.status === 'created');
-    const deliveredEvent = pkg.timeline.find(e => e.status === 'delivered');
-
-    if (createdEvent && deliveredEvent) {
-      const diffMs = new Date(deliveredEvent.date) - new Date(createdEvent.date);
-      totalHours += diffMs / (1000 * 60 * 60);
-      count++;
+// Delete Shipment
+app.delete('/api/shipment/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await Shipment.deleteOne({ id });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: 'Shipment not found' });
+        }
+        res.json({ message: 'Shipment deleted successfully' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-  });
-
-  res.json({ 
-    averageHours: count > 0 ? Math.round(totalHours / count) : 0, 
-    count 
-  });
 });
 
-app.get('/api/stats/shipments-by-state', (req, res) => {
-  const stats = packages.reduce((acc, pkg) => {
-    // Simple heuristic to extract state: look for 2 uppercase letters before the zip code
-    // e.g., "123 Main St, New York, NY 10001" -> "NY"
-    const match = pkg.destination && pkg.destination.match(/,\s*([A-Z]{2})\s+\d{5}/);
-    if (match && match[1]) {
-      const state = match[1];
-      acc[state] = (acc[state] || 0) + 1;
+// Schedule Pickup
+app.post('/api/pickup', async (req, res) => {
+    try {
+        const pickup = new Pickup(req.body);
+        await pickup.save();
+        res.json({ message: 'Pickup scheduled successfully', id: pickup._id });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-    return acc;
-  }, {});
-  res.json(stats);
 });
 
-app.get('/api/stats/top-users', (req, res) => {
-  const userCounts = packages.reduce((acc, pkg) => {
-    const user = pkg.sender || 'Unknown';
-    acc[user] = (acc[user] || 0) + 1;
-    return acc;
-  }, {});
-
-  const sortedUsers = Object.entries(userCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  res.json(sortedUsers.map(([name, count]) => ({ name, count })));
-});
-
-app.get('/api/stats/revenue', (req, res) => {
-  let totalRevenue = 0;
-  
-  packages.forEach(pkg => {
-    // Mock revenue calculation logic
-    const weightNum = parseFloat(String(pkg.weight).replace(/[^0-9.]/g, '')) || 1;
-    let baseRate = pkg.service && pkg.service.toLowerCase().includes('express') ? 25 : 10;
-    const distanceFactor = (pkg.destination ? pkg.destination.length % 5 : 1) + 1;
-    totalRevenue += baseRate + (weightNum * 1.5) * distanceFactor;
-  });
-
-  res.json({ total: totalRevenue.toFixed(2), currency: 'USD' });
-});
-
-app.get('/api/stats/shipments-last-7-days', (req, res) => {
-  const stats = {};
-  const today = new Date();
-  
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-    stats[dayName] = Math.floor(Math.random() * 8); // Random data for demo
-  }
-  res.json(stats);
-});
-
-app.get('/api/system/health', (req, res) => {
-  res.json({
-    status: 'UP',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-    cpuLoad: os.loadavg(),
-    memory: {
-      total: os.totalmem(),
-      free: os.freemem(),
-      used: os.totalmem() - os.freemem()
+app.get('/api/track/:id', async (req, res) => {
+    const { id } = req.params;
+    const data = await Shipment.findOne({ id });
+    if (data) {
+        res.json(data);
+    } else {
+        res.status(404).json({ error: 'Tracking ID not found' });
     }
-  });
 });
 
-app.post('/api/shipping/estimate', (req, res) => {
-  const { weight, destination, service } = req.body;
-  
-  if (!weight || !destination) {
-    return res.status(400).json({ error: true, message: "Weight and destination are required" });
-  }
-
-  // Simple mock calculation logic
-  const weightNum = parseFloat(String(weight).replace(/[^0-9.]/g, '')) || 1;
-  let baseRate = service && service.toLowerCase().includes('express') ? 25 : 10;
-  
-  // Mock distance factor (randomized slightly based on destination length)
-  const distanceFactor = (destination.length % 5) + 1; 
-  const total = (baseRate + (weightNum * 1.5) * distanceFactor).toFixed(2);
-
-  res.json({
-    estimatedCost: total,
-    currency: "USD",
-    details: `Estimate for ${weightNum} lbs to ${destination}`
-  });
-});
-
-app.get('/api/weather', (req, res) => {
-  const { location } = req.query;
-  if (!location) {
-    return res.status(400).json({ error: true, message: "Location parameter is required" });
-  }
-
-  // Mock weather data generation
-  const conditions = ['Sunny', 'Cloudy', 'Rainy', 'Partly Cloudy', 'Snowy', 'Clear'];
-  const condition = conditions[Math.floor(Math.random() * conditions.length)];
-  const temp = Math.floor(Math.random() * (95 - 30) + 30); // Random temp between 30-95 F
-  
-  res.json({
-    location: location,
-    temperature: `${temp}°F`,
-    condition: condition,
-    humidity: `${Math.floor(Math.random() * 60 + 20)}%`,
-    windSpeed: `${Math.floor(Math.random() * 15 + 2)} mph`
-  });
-});
-
-app.get('/api/system/time', (req, res) => {
-  res.json({ time: new Date().toISOString() });
-});
-
-app.get('/api/system/uptime', (req, res) => {
-  const uptime = process.uptime();
-  const hours = Math.floor(uptime / 3600);
-  const minutes = Math.floor((uptime % 3600) / 60);
-  const seconds = Math.floor(uptime % 60);
-  res.json({ 
-    uptime, 
-    formatted: `${hours}h ${minutes}m ${seconds}s` 
-  });
-});
-
-app.get('/api/system/quote', (req, res) => {
-  const quote = quotes[Math.floor(Math.random() * quotes.length)];
-  res.json({ quote });
-});
-
-app.get('/api/system/memory-history', (req, res) => {
-  const history = [];
-  const now = Date.now();
-  // Generate 10 points of mock memory data
-  for (let i = 9; i >= 0; i--) {
-    history.push({
-      time: new Date(now - i * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      usage: Math.floor(Math.random() * 200 + 300) // Random usage between 300-500 MB
-    });
-  }
-  res.json(history);
-});
-
-app.get('/api/system/load-history', (req, res) => {
-  const history = [];
-  const now = Date.now();
-  for (let i = 19; i >= 0; i--) {
-    history.push({
-      time: new Date(now - i * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      load: Math.floor(Math.random() * 40 + 10) // Mock load 10-50%
-    });
-  }
-  res.json(history);
-});
-
-// --- Announcement Routes ---
-app.get('/api/announcements', (req, res) => res.json(announcements));
-
-app.post('/api/announcements', (req, res) => {
-  const { title, message } = req.body;
-  if (!title || !message) {
-    return res.status(400).json({ error: true, message: "Title and message are required" });
-  }
-  
-  const newAnnouncement = {
-    id: `A${Date.now()}`,
-    title,
-    message,
-    date: new Date().toISOString().split('T')[0]
-  };
-  
-  announcements.unshift(newAnnouncement);
-  logAction('Admin', 'CREATE_ANNOUNCEMENT', `Created announcement: ${title}`);
-  res.status(201).json(newAnnouncement);
-});
-
-app.delete('/api/announcements/:id', (req, res) => {
-  const { id } = req.params;
-  announcements = announcements.filter(a => a.id !== id);
-  logAction('Admin', 'DELETE_ANNOUNCEMENT', `Deleted announcement: ${id}`);
-  res.json({ success: true });
-});
-
-// CHANGED PORT FROM 5000 TO 5002
-
-// Export for Firebase Functions
 exports.api = functions.https.onRequest(app);
 
-// Only listen locally if not running in Firebase Functions
-if (!process.env.FUNCTION_NAME) {
-  const PORT = process.env.PORT || 5002;
-  app.listen(PORT, () => {
-    console.log(`🚚 FedEx Clone Backend running on port ${PORT}`);
-    console.log('📦 Test tracking numbers:');
-    packages.forEach(p => {
-      console.log(`   ${p.trackingNumber} - ${p.service} (${p.statusText})`);
+// Start server locally if not running in Cloud Functions
+if (require.main === module) {
+    app.use(express.static(path.join(__dirname, '../frontend')));
+    app.listen(PORT, () => {
+        console.log(`Backend server running on http://localhost:${PORT}`);
     });
-    console.log(`🌐 Frontend URL: http://localhost:${PORT}`);
-  });
+}
+
+// --- Seed Data Helper ---
+async function seedDatabase() {
+    try {
+        const shipCount = await Shipment.countDocuments();
+        if (shipCount === 0) {
+            console.log("Seeding initial shipments...");
+            await Shipment.create({
+                id: '123456789012',
+                status: 'Delivered',
+                statusDetail: 'Delivered to front porch',
+                service: 'FedEx Home Delivery',
+                deliveryDate: 'Sunday, 9/24/2023',
+                weight: '4.5 lbs / 2.04 kgs',
+                destination: 'Austin, TX, US',
+                coordinates: { lat: 30.2672, lng: -97.7431 },
+                sender: 'Best Buy Inc.',
+                recipient: 'Chukwuka U.',
+                timeline: [
+                    { date: 'Sep 24, 2023 2:30 PM', status: 'Delivered', location: 'Austin, TX', icon: 'fa-check' },
+                    { date: 'Sep 24, 2023 8:00 AM', status: 'On FedEx vehicle for delivery', location: 'Austin, TX', icon: 'fa-truck' },
+                    { date: 'Sep 23, 2023 9:15 PM', status: 'Arrived at FedEx location', location: 'Austin, TX', icon: 'fa-warehouse' },
+                    { date: 'Sep 22, 2023 4:00 PM', status: 'Picked up', location: 'Dallas, TX', icon: 'fa-box' }
+                ]
+            });
+            await Shipment.create({
+                id: '987654321098',
+                status: 'In Transit',
+                statusDetail: 'Arrived at FedEx location',
+                service: 'FedEx Ground',
+                deliveryDate: 'Estimated Tuesday, 9/26/2023',
+                weight: '12.0 lbs / 5.44 kgs',
+                destination: 'Seattle, WA, US',
+                coordinates: { lat: 47.6062, lng: -122.3321 },
+                sender: 'Amazon Fulfillment',
+                recipient: 'Jane Doe',
+                timeline: [
+                    { date: 'Sep 25, 2023 10:00 AM', status: 'Arrived at FedEx location', location: 'Portland, OR', icon: 'fa-warehouse' },
+                    { date: 'Sep 24, 2023 6:30 PM', status: 'Departed FedEx location', location: 'Sacramento, CA', icon: 'fa-truck-moving' },
+                    { date: 'Sep 23, 2023 2:00 PM', status: 'Picked up', location: 'Los Angeles, CA', icon: 'fa-box' }
+                ]
+            });
+        }
+
+        // Ensure admin user exists and is verified
+        const adminUser = await User.findOne({ username: 'smallblack' });
+        if (!adminUser) {
+            console.log("Seeding admin user...");
+            const adminPass = await bcrypt.hash('Nigeria123', 10);
+            await User.create({ username: 'smallblack', email: 'admin@example.com', password: adminPass, role: 'admin', isVerified: true });
+        } else if (!adminUser.isVerified) {
+            console.log("Auto-verifying admin user...");
+            adminUser.isVerified = true;
+            await adminUser.save();
+        }
+
+        const regularUser = await User.findOne({ username: 'regularuser' });
+        if (!regularUser) {
+            console.log("Seeding regular user...");
+            const userPass = await bcrypt.hash('password123', 10);
+            await User.create({ username: 'regularuser', email: 'user@example.com', password: userPass, role: 'user', isVerified: true });
+        } else if (!regularUser.isVerified) {
+            regularUser.isVerified = true;
+            await regularUser.save();
+        }
+
+        const settingCount = await Setting.countDocuments();
+        if (settingCount === 0) {
+            await Setting.create({ key: 'maintenanceMode', value: false });
+        }
+    } catch (error) {
+        console.error("Error seeding database:", error);
+    }
 }

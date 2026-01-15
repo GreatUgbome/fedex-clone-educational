@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5002/api';
+const API_BASE_URL = 'https://fedex-clone-educational.onrender.com/api';
 
 // Enhanced tracking function
 async function trackPackage() {
