@@ -73,6 +73,28 @@ app.use('/api', async (req, res, next) => {
     next();
 });
 
+// Middleware to verify Firebase ID token
+const checkAuth = async (req, res, next) => {
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        const idToken = req.headers.authorization.split('Bearer ')[1];
+        try {
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            req.user = decodedToken; // Attach user info to the request
+            return next();
+        } catch (error) {
+            console.error('Error while verifying Firebase ID token:', error);
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+    }
+    return res.status(401).json({ error: 'No token provided' });
+};
+
+// Middleware to check for admin role (based on email)
+const checkAdmin = (req, res, next) => {
+    if (req.user && req.user.email === 'admin@fedex.com') return next();
+    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+};
+
 // --- MongoDB Setup ---
 // Global connection promise to reuse across function invocations
 let connPromise = null;
@@ -397,7 +419,7 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 // Settings Routes
-app.get('/api/settings', async (req, res) => {
+app.get('/api/settings', checkAuth, checkAdmin, async (req, res) => {
     try {
         const settings = await Setting.find({});
         const settingsMap = {};
@@ -408,20 +430,102 @@ app.get('/api/settings', async (req, res) => {
     }
 });
 
-app.put('/api/settings', async (req, res) => {
+app.put('/api/settings', checkAuth, checkAdmin, async (req, res) => {
     const { key, value } = req.body;
     await Setting.findOneAndUpdate({ key }, { value }, { upsert: true });
     res.json({ message: 'Setting updated' });
 });
 
 // Get all shipment IDs (for Admin Panel)
-app.get('/api/shipments', async (req, res) => {
+app.get('/api/shipments', checkAuth, checkAdmin, async (req, res) => {
     const ships = await Shipment.find({}, 'id status service');
     res.json(ships);
 });
 
+// --- Admin Dashboard Routes ---
+
+// Get all packages with details (mapped for frontend)
+app.get('/api/packages', checkAuth, checkAdmin, async (req, res) => {
+    const packages = await Shipment.find({});
+    const mapped = packages.map(p => ({
+        ...p.toObject(),
+        trackingNumber: p.id,
+        statusText: p.statusDetail,
+        estimatedDelivery: p.deliveryDate
+    }));
+    res.json(mapped);
+});
+
+app.get('/api/stats/shipments-by-status', checkAuth, checkAdmin, async (req, res) => {
+    const stats = await Shipment.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+    const result = {};
+    stats.forEach(s => result[s._id || 'unknown'] = s.count);
+    res.json(result);
+});
+
+app.get('/api/stats/shipments-by-service', checkAuth, checkAdmin, async (req, res) => {
+    const stats = await Shipment.aggregate([{ $group: { _id: "$service", count: { $sum: 1 } } }]);
+    const result = {};
+    stats.forEach(s => result[s._id || 'Unknown'] = s.count);
+    res.json(result);
+});
+
+app.get('/api/stats/shipments-last-7-days', checkAuth, checkAdmin, async (req, res) => {
+    // Mock data for chart visualization (since we don't have createdDate in schema yet)
+    const stats = {};
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        stats[dayName] = Math.floor(Math.random() * 5); 
+    }
+    res.json(stats);
+});
+
+app.get('/api/stats/average-delivery-time', checkAuth, checkAdmin, async (req, res) => {
+    res.json({ averageHours: 24, count: await Shipment.countDocuments({ status: 'Delivered' }) });
+});
+
+app.get('/api/stats/shipments-by-state', checkAuth, checkAdmin, async (req, res) => {
+    // Simple extraction from destination string
+    const shipments = await Shipment.find({}, 'destination');
+    const stats = {};
+    shipments.forEach(s => {
+        if (s.destination) {
+            const parts = s.destination.split(',');
+            const state = parts.length > 1 ? parts[parts.length - 1].trim().split(' ')[0] : 'Unknown';
+            stats[state] = (stats[state] || 0) + 1;
+        }
+    });
+    res.json(stats);
+});
+
+app.get('/api/stats/top-users', checkAuth, checkAdmin, async (req, res) => {
+    const users = await Shipment.aggregate([
+        { $group: { _id: "$sender", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 }
+    ]);
+    res.json(users.map(u => ({ name: u._id || 'Unknown', count: u.count })));
+});
+
+app.get('/api/stats/revenue', checkAuth, checkAdmin, async (req, res) => {
+    const count = await Shipment.countDocuments();
+    res.json({ total: (count * 15.50).toFixed(2), currency: 'USD' });
+});
+
+app.get('/api/system/load-history', checkAuth, checkAdmin, (req, res) => {
+    res.json([]); // Mock empty history
+});
+
+app.get('/api/audit-logs', checkAuth, checkAdmin, async (req, res) => {
+    const logs = await Activity.find().sort({ timestamp: -1 }).limit(50);
+    res.json(logs.map(l => ({ ...l.toObject(), user: l.username })));
+});
+
 // Get all shipments with full details for CSV Export
-app.get('/api/shipments/export', async (req, res) => {
+app.get('/api/shipments/export', checkAuth, checkAdmin, async (req, res) => {
     const ships = await Shipment.find({});
     res.json(ships);
 });
@@ -498,13 +602,13 @@ app.delete('/api/profile/:username', async (req, res) => {
 // --- User Management Routes (Admin) ---
 
 // Get all users
-app.get('/api/users', async (req, res) => {
-    const users = await User.find({}, 'username role _id');
+app.get('/api/users', checkAuth, checkAdmin, async (req, res) => {
+    const users = await User.find({}, 'username email role _id');
     res.json(users);
 });
 
 // Create User (Admin)
-app.post('/api/admin/user', async (req, res) => {
+app.post('/api/admin/user', checkAuth, checkAdmin, async (req, res) => {
     const { username, password, role } = req.body;
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'User already exists' });
@@ -516,7 +620,7 @@ app.post('/api/admin/user', async (req, res) => {
 });
 
 // Update User
-app.put('/api/admin/user/:id', async (req, res) => {
+app.put('/api/admin/user/:id', checkAuth, checkAdmin, async (req, res) => {
     const { id } = req.params;
     const { username, password, role } = req.body;
     
@@ -532,7 +636,7 @@ app.put('/api/admin/user/:id', async (req, res) => {
 });
 
 // Delete User
-app.delete('/api/admin/user/:id', async (req, res) => {
+app.delete('/api/admin/user/:id', checkAuth, checkAdmin, async (req, res) => {
     const { id } = req.params;
     try {
         await User.findByIdAndDelete(id);
@@ -543,7 +647,7 @@ app.delete('/api/admin/user/:id', async (req, res) => {
 });
 
 // Send Custom Email (Admin)
-app.post('/api/admin/send-email', upload.array('attachments'), async (req, res) => {
+app.post('/api/admin/send-email', checkAuth, checkAdmin, upload.array('attachments'), async (req, res) => {
     const { email, subject, message, draftId } = req.body;
     
     const attachments = req.files ? req.files.map(file => ({
@@ -574,7 +678,7 @@ app.post('/api/admin/send-email', upload.array('attachments'), async (req, res) 
 });
 
 // Send Bulk Email (Admin)
-app.post('/api/admin/send-bulk-email', upload.array('attachments'), async (req, res) => {
+app.post('/api/admin/send-bulk-email', checkAuth, checkAdmin, upload.array('attachments'), async (req, res) => {
     const { subject, message } = req.body;
     
     try {
@@ -613,7 +717,7 @@ app.post('/api/admin/send-bulk-email', upload.array('attachments'), async (req, 
 // --- Email Management Routes (Drafts & Logs) ---
 
 // Get Emails (Sent or Drafts)
-app.get('/api/admin/emails', async (req, res) => {
+app.get('/api/admin/emails', checkAuth, checkAdmin, async (req, res) => {
     const { status } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -634,7 +738,7 @@ app.get('/api/admin/emails', async (req, res) => {
 });
 
 // Delete Email (Draft or Sent)
-app.delete('/api/admin/email/:id', async (req, res) => {
+app.delete('/api/admin/email/:id', checkAuth, checkAdmin, async (req, res) => {
     const { id } = req.params;
     try {
         await Email.findByIdAndDelete(id);
@@ -645,7 +749,7 @@ app.delete('/api/admin/email/:id', async (req, res) => {
 });
 
 // Save Draft
-app.post('/api/admin/email/draft', async (req, res) => {
+app.post('/api/admin/email/draft', checkAuth, checkAdmin, async (req, res) => {
     const { recipient, subject, message, id } = req.body;
     try {
         if (id) {

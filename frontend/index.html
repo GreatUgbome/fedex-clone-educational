@@ -497,9 +497,22 @@
                                 <h2 class="text-2xl font-bold text-gray-800">Shipment Management</h2>
                                 <p class="text-sm text-gray-500">Manage packages, status updates, and tracking.</p>
                             </div>
-                            <button onclick="openEditModal()" class="bg-fedex-purple text-white px-4 py-2 rounded hover:bg-purple-800 transition shadow w-full md:w-auto">
+                            <button onclick="openEditModal(null)" class="bg-fedex-purple text-white px-4 py-2 rounded hover:bg-purple-800 transition shadow w-full md:w-auto">
                                 <i class="fas fa-plus mr-2"></i> New Shipment
                             </button>
+                            <button onclick="document.getElementById('bulkImportInput').click()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-file-csv mr-2"></i> Bulk Import
+                            </button>
+                            <button onclick="downloadCsvTemplate()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-download mr-2"></i> Template
+                            </button>
+                            <button id="bulkDeleteBtn" onclick="bulkDeleteShipments()" class="hidden bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-trash-alt mr-2"></i> Delete Selected
+                            </button>
+                            <button id="bulkStatusBtn" onclick="openBulkStatusModal()" class="hidden bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-edit mr-2"></i> Update Status
+                            </button>
+                            <input type="file" id="bulkImportInput" class="hidden" accept=".csv" onchange="handleBulkImport(this)">
                         </div>
                         <div class="mb-4">
                             <input type="text" id="shipmentSearchInput" onkeyup="handleShipmentSearch()" placeholder="Search by Tracking ID..." class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
@@ -508,15 +521,24 @@
                             <table class="w-full admin-table text-sm">
                                 <thead>
                                     <tr>
-                                        <th>Tracking ID</th>
-                                        <th>Status</th>
-                                        <th class="hidden sm:table-cell">Location</th>
-                                        <th class="hidden sm:table-cell">Delivery</th>
+                                        <th class="w-10"><input type="checkbox" id="selectAllShipments" onchange="toggleSelectAll(this)"></th>
+                                        <th class="cursor-pointer hover:bg-gray-200" onclick="sortShipments('trackingNumber')">Tracking ID <i class="fas fa-sort ml-1 text-gray-400"></i></th>
+                                        <th class="cursor-pointer hover:bg-gray-200" onclick="sortShipments('status')">Status <i class="fas fa-sort ml-1 text-gray-400"></i></th>
+                                        <th class="hidden sm:table-cell cursor-pointer hover:bg-gray-200" onclick="sortShipments('destination')">Location <i class="fas fa-sort ml-1 text-gray-400"></i></th>
+                                        <th class="hidden sm:table-cell cursor-pointer hover:bg-gray-200" onclick="sortShipments('estimatedDelivery')">Delivery <i class="fas fa-sort ml-1 text-gray-400"></i></th>
                                         <th class="text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="adminTableBody"></tbody>
                             </table>
+                        </div>
+                        <div id="bulkImportProgressContainer" class="hidden mt-4 bg-white p-4 rounded shadow border border-gray-200">
+                            <div class="text-sm font-bold text-gray-700 mb-2">Importing Shipments... <span id="bulkImportCount">0/0</span></div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5"><div id="bulkImportProgressBar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div></div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2"><div id="bulkImportProgressBar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div></div>
+                            <button onclick="cancelBulkImport()" class="text-xs text-red-600 hover:text-red-800 font-bold">
+                                <i class="fas fa-stop-circle mr-1"></i> Cancel Import
+                            </button>
                         </div>
                         <div class="flex justify-between items-center mt-4 bg-white p-3 rounded shadow border border-gray-200">
                             <span class="text-sm text-gray-600" id="shipmentPageInfo">Page 1 of 1</span>
@@ -538,6 +560,9 @@
                                 <i class="fas fa-user-plus mr-2"></i> Add User
                             </button>
                         </div>
+                        <div class="mb-4">
+                            <input type="text" id="userSearchInput" onkeyup="handleUserSearch()" placeholder="Search users by name or email..." class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
+                        </div>
                         <div class="bg-white rounded shadow overflow-x-auto border border-gray-200">
                             <table class="w-full admin-table text-sm">
                                 <thead>
@@ -551,6 +576,13 @@
                                 </thead>
                                 <tbody id="adminUsersTableBody"></tbody>
                             </table>
+                        </div>
+                        <div class="flex justify-between items-center mt-4 bg-white p-3 rounded shadow border border-gray-200">
+                            <span class="text-sm text-gray-600" id="userPageInfo">Page 1 of 1</span>
+                            <div class="space-x-2">
+                                <button onclick="changeUserPage(-1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" id="userPrevBtn">Previous</button>
+                                <button onclick="changeUserPage(1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" id="userNextBtn">Next</button>
+                            </div>
                         </div>
                     </div>
 
@@ -833,6 +865,30 @@
                 <div class="flex justify-end space-x-2 pt-4 border-t">
                     <button onclick="closeModal('adminLocationModal')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
                     <button onclick="saveLocation()" class="px-4 py-2 bg-fedex-orange text-white rounded hover:bg-orange-600 font-bold">Save Location</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Bulk Status Modal -->
+    <div id="bulkStatusModal" class="hidden fixed inset-0 z-[65] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden slide-down">
+            <div class="bg-fedex-purple p-3 text-white font-bold flex justify-between">
+                <span>Bulk Status Update</span>
+                <button onclick="closeModal('bulkStatusModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-gray-600">Select new status for selected shipments:</p>
+                <select id="bulkStatusSelect" class="w-full border p-2 rounded outline-none">
+                    <option value="in_transit">In Transit</option>
+                    <option value="out_for_delivery">Out for Delivery</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="exception">Exception</option>
+                    <option value="created">Pending</option>
+                </select>
+                <div class="flex justify-end space-x-2 pt-4 border-t">
+                    <button onclick="closeModal('bulkStatusModal')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onclick="applyBulkStatusUpdate()" class="px-4 py-2 bg-fedex-orange text-white rounded hover:bg-orange-600 font-bold">Update</button>
                 </div>
             </div>
         </div>
@@ -1132,6 +1188,13 @@
         let isAdmin = false;
         let currentUser = null;
         let isSignupMode = false;
+        let isImportCancelled = false;
+        let failedImports = [];
+        let selectedShipments = new Set();
+        let currentSortColumn = 'trackingNumber';
+        let currentSortDirection = 'asc';
+        let currentUserPage = 1;
+        const usersPerPage = 10;
 
         async function resetToDefaults() {
             if(confirm("Reset settings to default values? This cannot be undone.")) {
@@ -2085,9 +2148,23 @@
                     pkg.trackingNumber.toLowerCase().includes(query)
                 );
 
+                // Sort Data
+                filteredData.sort((a, b) => {
+                    let valA = a[currentSortColumn] || '';
+                    let valB = b[currentSortColumn] || '';
+                    
+                    if (typeof valA === 'string') valA = valA.toLowerCase();
+                    if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                    if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+
                 const start = (currentShipmentPage - 1) * shipmentsPerPage;
                 const end = start + shipmentsPerPage;
                 const pageData = filteredData.slice(start, end);
+                const selectAllCheckbox = document.getElementById('selectAllShipments');
 
                 pageData.forEach(pkg => {
                     const row = document.createElement('tr');
@@ -2100,8 +2177,11 @@
                         formattedDate = new Date(pkg.estimatedDelivery).toLocaleString();
                     }
 
+                    const isSelected = selectedShipments.has(pkg.trackingNumber);
+
                     row.innerHTML = `
-                        <td class="font-mono font-bold text-gray-700">${pkg.trackingNumber}</td>
+                        <td><input type="checkbox" class="shipment-checkbox" value="${pkg.trackingNumber}" onchange="toggleShipmentSelection('${pkg.trackingNumber}')" ${isSelected ? 'checked' : ''}></td>
+                        <td class="font-mono font-bold text-gray-700 cursor-pointer hover:text-fedex-purple" onclick="openEditModal('${pkg.trackingNumber}')">${pkg.trackingNumber}</td>
                         <td><span class="px-2 py-1 rounded text-xs text-white ${statusColor}">${statusLabel}</span></td>
                         <td class="text-gray-600 hidden sm:table-cell">${pkg.service}</td>
                         <td class="text-gray-600 text-xs truncate max-w-[150px] hidden sm:table-cell">${formattedDate}</td>
@@ -2114,6 +2194,11 @@
                     tbody.appendChild(row);
                 });
 
+                // Update Select All state based on current page
+                const allPageSelected = pageData.length > 0 && pageData.every(pkg => selectedShipments.has(pkg.trackingNumber));
+                selectAllCheckbox.checked = allPageSelected;
+                updateBulkDeleteButton();
+
                 // Update Pagination UI
                 const totalPages = Math.ceil(filteredData.length / shipmentsPerPage) || 1;
                 document.getElementById('shipmentPageInfo').textContent = `Page ${currentShipmentPage} of ${totalPages}`;
@@ -2123,6 +2208,127 @@
             } catch (e) {
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Failed to load shipments</td></tr>';
             }
+        }
+
+        function sortShipments(column) {
+            if (currentSortColumn === column) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = column;
+                currentSortDirection = 'asc';
+            }
+            renderAdminTable();
+        }
+
+        function toggleSelectAll(checkbox) {
+            const checkboxes = document.querySelectorAll('.shipment-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) {
+                    selectedShipments.add(cb.value);
+                } else {
+                    selectedShipments.delete(cb.value);
+                }
+            });
+            updateBulkDeleteButton();
+        }
+
+        function toggleShipmentSelection(id) {
+            if (selectedShipments.has(id)) {
+                selectedShipments.delete(id);
+            } else {
+                selectedShipments.add(id);
+            }
+            
+            // Update Select All checkbox state
+            const checkboxes = document.querySelectorAll('.shipment-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            document.getElementById('selectAllShipments').checked = allChecked && checkboxes.length > 0;
+            
+            updateBulkDeleteButton();
+        }
+
+        function updateBulkDeleteButton() {
+            const btn = document.getElementById('bulkDeleteBtn');
+            const statusBtn = document.getElementById('bulkStatusBtn');
+            if (selectedShipments.size > 0) {
+                btn.classList.remove('hidden');
+                btn.innerHTML = `<i class="fas fa-trash-alt mr-2"></i> Delete (${selectedShipments.size})`;
+                statusBtn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+                statusBtn.classList.add('hidden');
+            }
+        }
+
+        async function bulkDeleteShipments() {
+            if (selectedShipments.size === 0) return;
+            
+            if (!confirm(`Are you sure you want to delete ${selectedShipments.size} shipments? This cannot be undone.`)) return;
+
+            let deletedCount = 0;
+            const idsToDelete = Array.from(selectedShipments);
+            
+            // Show processing toast
+            showToast(`Deleting ${idsToDelete.length} shipments...`);
+
+            for (const id of idsToDelete) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/packages/${id}`, { method: 'DELETE' });
+                    deletedCount++;
+                } catch (e) {
+                    console.error(`Failed to delete ${id}`, e);
+                }
+            }
+
+            showToast(`Deleted ${deletedCount} shipments.`);
+            selectedShipments.clear();
+            document.getElementById('selectAllShipments').checked = false;
+            updateBulkDeleteButton();
+            renderAdminTable();
+        }
+
+        function openBulkStatusModal() {
+            if (selectedShipments.size === 0) return;
+            openModal('bulkStatusModal');
+        }
+
+        async function applyBulkStatusUpdate() {
+            const newStatus = document.getElementById('bulkStatusSelect').value;
+            const idsToUpdate = Array.from(selectedShipments);
+            let updatedCount = 0;
+
+            showToast(`Updating ${idsToUpdate.length} shipments...`);
+
+            for (const id of idsToUpdate) {
+                try {
+                    // Fetch current data first to preserve other fields
+                    const currentRes = await fetch(`${API_BASE_URL}/api/track/${id}`);
+                    const currentData = await currentRes.json();
+
+                    const payload = {
+                        ...currentData,
+                        status: newStatus,
+                        statusText: newStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                    };
+
+                    await fetch(`${API_BASE_URL}/api/packages/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    updatedCount++;
+                } catch (e) {
+                    console.error(`Failed to update ${id}`, e);
+                }
+            }
+
+            showToast(`Updated ${updatedCount} shipments.`);
+            closeModal('bulkStatusModal');
+            selectedShipments.clear();
+            document.getElementById('selectAllShipments').checked = false;
+            updateBulkDeleteButton();
+            renderAdminTable();
         }
 
         function handleShipmentSearch() {
@@ -2292,10 +2498,27 @@
             const weight = document.getElementById('editWeight').value.trim();
             const dimensions = document.getElementById('editDimensions').value.trim();
             const pieces = document.getElementById('editPieces').value;
+            const date = document.getElementById('editDate').value;
             
             // Form Validation
-            if (!trackingNumber || !destination || !service || !weight) {
-                showToast("Please fill in all required fields (Tracking ID, Location, Service, Weight)", "error");
+            if (!trackingNumber) {
+                showToast("Tracking ID is required", "error");
+                return;
+            }
+            if (!destination) {
+                showToast("Location/Destination is required", "error");
+                return;
+            }
+            if (!service) {
+                showToast("Service Type is required", "error");
+                return;
+            }
+            if (!weight) {
+                showToast("Weight is required", "error");
+                return;
+            }
+            if (!date && !originalId) { // Date required for new shipments
+                showToast("Delivery Date is required", "error");
                 return;
             }
             
@@ -2356,6 +2579,137 @@
             }
         }
 
+        function cancelBulkImport() {
+            isImportCancelled = true;
+        }
+
+        function downloadImportErrors() {
+            if (failedImports.length === 0) return;
+            
+            const headers = "Tracking ID,Error Message,Original Data";
+            const csvContent = [
+                headers,
+                ...failedImports.map(f => `${f.data.trackingNumber},"${f.error}",${JSON.stringify(f.data).replace(/,/g, ';')}`)
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "import_errors.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function retryFailedImports() {
+            if (failedImports.length === 0) return;
+            const shipmentsToRetry = failedImports.map(f => f.data);
+            // Reset UI for retry
+            document.getElementById('retryFailedBtn').classList.add('hidden');
+            document.getElementById('downloadErrorsBtn').classList.add('hidden');
+            
+            // Reuse the processing logic
+            processShipmentBatch(shipmentsToRetry);
+        }
+
+        async function handleBulkImport(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').slice(1); // Skip header
+                const shipments = [];
+
+                rows.forEach(row => {
+                    const cols = row.split(',');
+                    if (cols.length >= 4) { // Basic validation
+                        shipments.push({
+                            trackingNumber: cols[0].trim(),
+                            status: cols[1].trim(),
+                            service: cols[2].trim(),
+                            destination: cols[3].trim(),
+                            weight: cols[4] ? cols[4].trim() : '1.0 lbs',
+                            sender: 'Bulk Import',
+                            recipient: 'Customer'
+                        });
+                    }
+                });
+
+                if (shipments.length === 0) {
+                    showToast("No valid shipments found in CSV", "error");
+                    return;
+                }
+
+                processShipmentBatch(shipments);
+                input.value = ''; // Reset input
+            };
+            reader.readAsText(file);
+        }
+
+        async function processShipmentBatch(shipments) {
+            const progressContainer = document.getElementById('bulkImportProgressContainer');
+            const progressBar = document.getElementById('bulkImportProgressBar');
+            const progressCount = document.getElementById('bulkImportCount');
+            
+            progressContainer.classList.remove('hidden');
+            isImportCancelled = false;
+            failedImports = []; // Reset failures for this run
+            let processed = 0;
+            
+                try {
+                    // Process sequentially or use a bulk endpoint if available
+                    // For now, we'll loop through and create them individually
+                    for (const shipment of shipments) {
+                        await fetch(`${API_BASE_URL}/api/packages`, { // Assuming backend supports this or similar endpoint
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(shipment)
+                        });
+                        if (isImportCancelled) {
+                            showToast("Import cancelled by user.", "info");
+                            break;
+                        }
+
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/api/packages`, { // Assuming backend supports this or similar endpoint
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(shipment)
+                            });
+                            if (!res.ok) throw new Error('Failed');
+                        } catch (err) {
+                            console.error(`Failed to import ${shipment.trackingNumber}`, err);
+                            failedImports.push({ data: shipment, error: err.message || "Unknown error" });
+                        }
+
+                        processed++;
+                        const percent = Math.round((processed / shipments.length) * 100);
+                        progressBar.style.width = `${percent}%`;
+                        progressCount.textContent = `${processed}/${shipments.length}`;
+                    }
+                    showToast(`Imported ${shipments.length} shipments successfully`);
+                    
+                    const successCount = processed - failedImports.length;
+                    let msg = `Imported ${successCount} shipments successfully.`;
+                    
+                    if (failedImports.length > 0) {
+                        msg += ` ${failedImports.length} failed.`;
+                        document.getElementById('retryFailedBtn').classList.remove('hidden');
+                        document.getElementById('downloadErrorsBtn').classList.remove('hidden');
+                    } else {
+                        setTimeout(() => progressContainer.classList.add('hidden'), 2000);
+                    }
+                    
+                    showToast(msg, failedImports.length > 0 ? "warning" : "success");
+                    renderAdminTable();
+                } catch (e) {
+                    showToast("Error importing shipments", "error");
+                }
+        }
+
         async function deleteShipment(id) {
             if(confirm(`Delete shipment ${id}?`)) {
                 try {
@@ -2382,37 +2736,82 @@
         }
 
         // --- USERS ---
-        async function renderUsersTable() {
+        async function renderUsersTable(fetchData = true) {
             const tbody = document.getElementById('adminUsersTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
             
-            const response = await fetch(`${API_BASE_URL}/api/users`);
-            usersData = await response.json();
+            if (fetchData) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
+                try {
+                    const headers = await getAuthHeaders();
+                    const response = await fetch(`${API_BASE_URL}/api/users`, { headers });
+                    if (!response.ok) throw new Error('Failed to fetch');
+                    usersData = await response.json();
+                } catch (e) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Error loading users</td></tr>';
+                    return;
+                }
+            }
             
+            const query = document.getElementById('userSearchInput') ? document.getElementById('userSearchInput').value.toLowerCase() : '';
+            const filteredUsers = usersData.filter(user => 
+                (user.username && user.username.toLowerCase().includes(query)) || 
+                (user.email && user.email.toLowerCase().includes(query))
+            );
+            
+            const start = (currentUserPage - 1) * usersPerPage;
+            const end = start + usersPerPage;
+            const pageData = filteredUsers.slice(start, end);
+
             tbody.innerHTML = '';
-            usersData.forEach(user => {
+            pageData.forEach(user => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="font-mono text-gray-600">${user.id}</td>
-                    <td class="font-bold text-gray-800">${user.name}</td>
-                    <td class="hidden sm:table-cell">${user.email}</td>
+                    <td class="font-mono text-gray-600">${user._id}</td>
+                    <td class="font-bold text-gray-800">${user.username}</td>
+                    <td class="hidden sm:table-cell">${user.email || ''}</td>
                     <td><span class="bg-gray-200 text-xs px-2 py-1 rounded text-gray-700">${user.role}</span></td>
                     <td class="text-right">
-                        <button onclick="openUserModal('${user.id}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteUser('${user.id}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
+                        <button onclick="openUserModal('${user._id}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${user._id}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
+
+            // Update Pagination UI
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage) || 1;
+            document.getElementById('userPageInfo').textContent = `Page ${currentUserPage} of ${totalPages}`;
+            document.getElementById('userPrevBtn').disabled = currentUserPage === 1;
+            document.getElementById('userNextBtn').disabled = currentUserPage === totalPages;
+        }
+
+        function handleUserSearch() {
+            currentUserPage = 1;
+            renderUsersTable(false);
+        }
+
+        function changeUserPage(step) {
+            const query = document.getElementById('userSearchInput') ? document.getElementById('userSearchInput').value.toLowerCase() : '';
+            const filteredUsers = usersData.filter(user => 
+                (user.username && user.username.toLowerCase().includes(query)) || 
+                (user.email && user.email.toLowerCase().includes(query))
+            );
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage) || 1;
+            
+            const newPage = currentUserPage + step;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentUserPage = newPage;
+                renderUsersTable(false);
+            }
         }
 
         function openUserModal(id = null) {
             const title = document.getElementById('userModalTitle');
             if(id) {
-                const user = usersData.find(u => u.id === id);
+                const user = usersData.find(u => u._id === id);
                 title.textContent = "Edit User";
-                document.getElementById('userIdInput').value = user.id;
-                document.getElementById('userNameInput').value = user.name;
+                document.getElementById('userIdInput').value = user._id;
+                document.getElementById('userNameInput').value = user.username;
                 document.getElementById('userEmailInput').value = user.email;
                 document.getElementById('userRoleInput').value = user.role;
             } else {
