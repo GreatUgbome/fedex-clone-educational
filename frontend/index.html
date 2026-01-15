@@ -1122,6 +1122,9 @@
 
     <script>
         // --- 1. State & Mock Data (with LocalStorage) ---
+        // Use local backend for development, or the Render URL for production
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5002' : 'https://fedex-clone-educational.onrender.com';
+
         let isLoggedIn = false;
         let isAdmin = false;
         let currentUser = null;
@@ -1130,7 +1133,7 @@
         async function resetToDefaults() {
             if(confirm("Reset settings to default values? This cannot be undone.")) {
                 try {
-                    const response = await fetch('/api/settings/reset', { method: 'POST' });
+                    const response = await fetch(`${API_BASE_URL}/api/settings/reset`, { method: 'POST' });
                     if (response.ok) {
                         showToast("Settings have been reset.");
                         renderSettings();
@@ -1384,7 +1387,7 @@
 
             try {
                 // Call Backend API
-                const response = await fetch(`/api/track/${input}`);
+                const response = await fetch(`${API_BASE_URL}/api/track/${input}`);
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -1415,7 +1418,7 @@
             el.textContent = 'Calculating...';
             
             try {
-                const response = await fetch(`/api/carbon/${id}`);
+                const response = await fetch(`${API_BASE_URL}/api/carbon/${id}`);
                 if (response.ok) {
                     const data = await response.json();
                     el.textContent = `${data.amount} kg CO2e`;
@@ -1448,7 +1451,7 @@
 
             trackingPollInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/track/${id}`);
+                    const response = await fetch(`${API_BASE_URL}/api/track/${id}`);
                     if (response.ok) {
                         const data = await response.json();
                         
@@ -1515,7 +1518,7 @@
             if (!mapContainer) return;
 
             try {
-                const response = await fetch(`/api/track/${trackingNumber}/route`);
+                const response = await fetch(`${API_BASE_URL}/api/track/${trackingNumber}/route`);
                 const route = await response.json();
 
                 if (mapInstance) {
@@ -1766,19 +1769,19 @@
         async function renderDashboard() {
             try {
                 const [pkgRes, userRes, statsRes, serviceRes, historyRes, avgTimeRes, stateRes, healthRes, topUsersRes, settingsRes, loadRes, auditRes, revenueRes] = await Promise.all([
-                    fetch('/api/packages'),
-                    fetch('/api/users'),
-                    fetch('/api/stats/shipments-by-status'),
-                    fetch('/api/stats/shipments-by-service'),
-                    fetch('/api/stats/shipments-last-7-days'),
-                    fetch('/api/stats/average-delivery-time'),
-                    fetch('/api/stats/shipments-by-state'),
-                    fetch('/api/system/health'),
-                    fetch('/api/stats/top-users'),
-                    fetch('/api/settings'),
-                    fetch('/api/system/load-history'),
-                    fetch('/api/audit-logs'),
-                    fetch('/api/stats/revenue')
+                    fetch(`${API_BASE_URL}/api/packages`),
+                    fetch(`${API_BASE_URL}/api/users`),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-status`),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-service`),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-last-7-days`),
+                    fetch(`${API_BASE_URL}/api/stats/average-delivery-time`),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-state`),
+                    fetch(`${API_BASE_URL}/api/system/health`),
+                    fetch(`${API_BASE_URL}/api/stats/top-users`),
+                    fetch(`${API_BASE_URL}/api/settings`),
+                    fetch(`${API_BASE_URL}/api/system/load-history`),
+                    fetch(`${API_BASE_URL}/api/audit-logs`),
+                    fetch(`${API_BASE_URL}/api/stats/revenue`)
                 ]);
                 
                 const packages = await pkgRes.json();
@@ -2056,7 +2059,7 @@
             const newState = !isCurrentlyActive;
             
             try {
-                await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maintenance: newState }) });
+                await fetch(`${API_BASE_URL}/api/settings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maintenance: newState }) });
                 updateMaintenanceToggleUI(newState);
                 showToast(`Maintenance mode ${newState ? 'enabled' : 'disabled'}`);
             } catch (e) { showToast("Failed to update settings", "error"); }
@@ -2068,7 +2071,7 @@
             tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
 
             try {
-                const response = await fetch('/api/packages');
+                const response = await fetch(`${API_BASE_URL}/api/packages`);
                 allShipmentsData = await response.json();
                 
                 tbody.innerHTML = '';
@@ -2136,7 +2139,7 @@
 
         async function printLabel(id) {
             try {
-                const response = await fetch(`/api/track/${id}`);
+                const response = await fetch(`${API_BASE_URL}/api/track/${id}`);
                 if (!response.ok) throw new Error("Package not found");
                 const pkg = await response.json();
                 
@@ -2236,7 +2239,7 @@
             
             if (id) {
                 try {
-                    const response = await fetch(`/api/track/${id}`);
+                    const response = await fetch(`${API_BASE_URL}/api/track/${id}`);
                     const pkg = await response.json();
                     
                     title.textContent = "Edit Shipment";
@@ -2319,7 +2322,7 @@
                 let response;
                 if (originalId) {
                     // Update
-                    response = await fetch(`/api/packages/${originalId}`, {
+                    response = await fetch(`${API_BASE_URL}/api/packages/${originalId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -2329,7 +2332,7 @@
                     // Add required fields for creation
                     payload.sender = "Admin Created";
                     payload.recipient = "Customer";
-                    response = await fetch('/api/packages', {
+                    response = await fetch(`${API_BASE_URL}/api/packages`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -2352,7 +2355,7 @@
         async function deleteShipment(id) {
             if(confirm(`Delete shipment ${id}?`)) {
                 try {
-                    const response = await fetch(`/api/packages/${id}`, { method: 'DELETE' });
+                    const response = await fetch(`${API_BASE_URL}/api/packages/${id}`, { method: 'DELETE' });
                     if (response.ok) {
                         showToast("Shipment deleted");
                         renderAdminTable();
@@ -2379,7 +2382,7 @@
             const tbody = document.getElementById('adminUsersTableBody');
             tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
             
-            const response = await fetch('/api/users');
+            const response = await fetch(`${API_BASE_URL}/api/users`);
             usersData = await response.json();
             
             tbody.innerHTML = '';
@@ -2430,13 +2433,13 @@
             let response;
 
             if(id) {
-                response = await fetch(`/api/users/${id}`, {
+                response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
             } else {
-                response = await fetch('/api/users', {
+                response = await fetch(`${API_BASE_URL}/api/users`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -2452,7 +2455,7 @@
 
         async function deleteUser(id) {
             if(confirm(`Are you sure you want to delete user ${id}? This action cannot be undone.`)) {
-                await fetch(`/api/users/${id}`, { method: 'DELETE' });
+                await fetch(`${API_BASE_URL}/api/users/${id}`, { method: 'DELETE' });
                 renderUsersTable();
                 showToast("User deleted.");
             }
@@ -2463,7 +2466,7 @@
             const tbody = document.getElementById('adminLocationsTableBody');
             tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
             
-            const response = await fetch('/api/locations');
+            const response = await fetch(`${API_BASE_URL}/api/locations`);
             locationsData = await response.json();
             
             tbody.innerHTML = '';
@@ -2517,13 +2520,13 @@
             let response;
             
             if(id) {
-                response = await fetch(`/api/locations/${id}`, {
+                response = await fetch(`${API_BASE_URL}/api/locations/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
             } else {
-                response = await fetch('/api/locations', {
+                response = await fetch(`${API_BASE_URL}/api/locations`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -2539,7 +2542,7 @@
 
         async function deleteLocation(id) {
             if(confirm(`Delete location ${id}?`)) {
-                await fetch(`/api/locations/${id}`, { method: 'DELETE' });
+                await fetch(`${API_BASE_URL}/api/locations/${id}`, { method: 'DELETE' });
                 renderLocationsTable();
                 showToast("Location deleted.");
             }
@@ -2548,7 +2551,7 @@
         // --- SETTINGS ---
         async function renderSettings() {
             try {
-                const response = await fetch('/api/settings');
+                const response = await fetch(`${API_BASE_URL}/api/settings`);
                 settingsData = await response.json();
                 
                 document.getElementById('setting-maintenance').checked = settingsData.maintenance;
@@ -2590,7 +2593,7 @@
             };
             
             try {
-                await fetch('/api/settings', {
+                await fetch(`${API_BASE_URL}/api/settings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -2611,7 +2614,7 @@
             tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Loading...</td></tr>';
             
             try {
-                const response = await fetch('/api/audit-logs');
+                const response = await fetch(`${API_BASE_URL}/api/audit-logs`);
                 auditLogsData = await response.json();
                 filterAndSortAuditLogs();
             } catch (e) {
