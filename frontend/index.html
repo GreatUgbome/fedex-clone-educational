@@ -2857,7 +2857,7 @@
 
             const payload = { 
                 trackingNumber, 
-                id: trackingNumber, // Backend expects 'id'
+                id: trackingNumber,
                 status, 
                 statusText: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format status text nicely
                 destination, 
@@ -2875,7 +2875,7 @@
 
                 if (originalId) {
                     // Update
-                    response = await fetch(`${API_BASE_URL}/api/packages/${originalId}`, {
+                    response = await fetch(`${API_BASE_URL}/api/shipment/${originalId}`, {
                         method: 'PUT',
                         headers: headers,
                         body: JSON.stringify(payload)
@@ -2898,7 +2898,7 @@
                     renderAdminTable();
                 } else {
                     const err = await response.json();
-                    showToast(err.error || err.message || "Error saving shipment", "error");
+                    showToast(err.message || "Error saving shipment", "error");
                 }
             } catch (e) {
                 showToast("Network error", "error");
@@ -3159,19 +3159,21 @@
 
             if(!name || !email) return alert("Name and Email required");
 
-            const payload = { name, email, role };
+            const payload = { username: name, email, role };
             let response;
 
+            const headers = await getAuthHeaders();
+
             if(id) {
-                response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+                response = await fetch(`${API_BASE_URL}/api/admin/user/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
             } else {
                 response = await fetch(`${API_BASE_URL}/api/admin/user`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
             }
