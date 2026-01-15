@@ -2100,10 +2100,10 @@
         async function downloadDashboardReport() {
             try {
                 const [pkgRes, statsRes, serviceRes, stateRes] = await Promise.all([
-                    fetch('/api/packages'),
-                    fetch('/api/stats/shipments-by-status'),
-                    fetch('/api/stats/shipments-by-service'),
-                    fetch('/api/stats/shipments-by-state')
+                    fetch(`${API_BASE_URL}/api/packages`),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-status`),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-service`),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-state`)
                 ]);
 
                 const packages = await pkgRes.json();
@@ -2334,7 +2334,8 @@
 
             for (const id of idsToDelete) {
                 try {
-                    await fetch(`${API_BASE_URL}/api/packages/${id}`, { method: 'DELETE' });
+                    const headers = await getAuthHeaders();
+                    await fetch(`${API_BASE_URL}/api/shipment/${id}`, { method: 'DELETE', headers: headers });
                     deletedCount++;
                 } catch (e) {
                     console.error(`Failed to delete ${id}`, e);
@@ -2856,6 +2857,7 @@
 
             const payload = { 
                 trackingNumber, 
+                id: trackingNumber, // Backend expects 'id'
                 status, 
                 statusText: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format status text nicely
                 destination, 
@@ -2869,11 +2871,13 @@
             
             try {
                 let response;
+                const headers = await getAuthHeaders();
+
                 if (originalId) {
                     // Update
                     response = await fetch(`${API_BASE_URL}/api/packages/${originalId}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
                         body: JSON.stringify(payload)
                     });
                 } else {
@@ -2881,9 +2885,9 @@
                     // Add required fields for creation
                     payload.sender = "Admin Created";
                     payload.recipient = "Customer";
-                    response = await fetch(`${API_BASE_URL}/api/packages`, {
+                    response = await fetch(`${API_BASE_URL}/api/shipment`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
                         body: JSON.stringify(payload)
                     });
                 }
@@ -2894,7 +2898,7 @@
                     renderAdminTable();
                 } else {
                     const err = await response.json();
-                    showToast(err.message || "Error saving shipment", "error");
+                    showToast(err.error || err.message || "Error saving shipment", "error");
                 }
             } catch (e) {
                 showToast("Network error", "error");
@@ -3033,7 +3037,8 @@
         async function deleteShipment(id) {
             if(confirm(`Delete shipment ${id}?`)) {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/packages/${id}`, { method: 'DELETE' });
+                    const headers = await getAuthHeaders();
+                    const response = await fetch(`${API_BASE_URL}/api/shipment/${id}`, { method: 'DELETE', headers: headers });
                     if (response.ok) {
                         showToast("Shipment deleted");
                         renderAdminTable();
@@ -3164,7 +3169,7 @@
                     body: JSON.stringify(payload)
                 });
             } else {
-                response = await fetch(`${API_BASE_URL}/api/users`, {
+                response = await fetch(`${API_BASE_URL}/api/admin/user`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -3504,7 +3509,7 @@
         async function clearAuditLogs() {
             if(confirm("Are you sure you want to clear all audit logs? This cannot be undone.")) {
                 try {
-                    const response = await fetch('/api/audit-logs', { method: 'DELETE' });
+                    const response = await fetch(`${API_BASE_URL}/api/audit-logs`, { method: 'DELETE' });
                     if (response.ok) {
                         showToast("Audit logs cleared.");
                         renderAuditLogsTable();
