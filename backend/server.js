@@ -8,23 +8,54 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
 admin.initializeApp();
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Render/Firebase) for rate limiting
 const PORT = process.env.PORT || 5002;
 // Base URL for emails - Update this to your Firebase Hosting URL in production
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = process.env.BASE_URL || (process.env.RENDER ? 'https://fedex-37e89.web.app' : `http://localhost:${PORT}`);
 
 app.use(cors({ origin: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' },
+    skip: (req, res) => {
+        const whitelistedIps = ['127.0.0.1', '::1']; // Add IPs to whitelist here
+        return whitelistedIps.includes(req.ip);
+    }
+});
+app.use('/api', limiter);
+
+// Request Logger Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 // Suppress browser noise (favicon and chrome devtools probe)
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.sendStatus(404));
+
+// Health Check Endpoint
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'UP',
+        timestamp: new Date().toISOString(),
+        dbState: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
+    });
+});
 
 // Middleware to check DB connection before handling API requests
 app.use('/api', async (req, res, next) => {
