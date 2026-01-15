@@ -1,4 +1,4 @@
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5002/api' : 'https://fedex-clone-educational.onrender.com/api';
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5002' : 'https://fedex-clone-educational.onrender.com';
 
 // Enhanced tracking function
 async function trackPackage() {
@@ -20,7 +20,7 @@ async function trackPackage() {
     document.getElementById('trackingInput').value = 'Tracking...';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/track/${trackingNumber}`);
+        const response = await fetch(`${API_BASE_URL}/api/track/${trackingNumber}`);
         
         if (!response.ok) {
             const errorData = await response.json();

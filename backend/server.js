@@ -20,6 +20,12 @@ const PORT = process.env.PORT || 5002;
 // Base URL for emails - Update this to your Firebase Hosting URL in production
 const BASE_URL = process.env.BASE_URL || (process.env.RENDER ? 'https://fedex-37e89.web.app' : `http://localhost:${PORT}`);
 
+// Request Logger Middleware - Moved to top to capture all requests
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.ip}`);
+    next();
+});
+
 app.use(cors({ origin: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -37,12 +43,6 @@ const limiter = rateLimit({
     }
 });
 app.use('/api', limiter);
-
-// Request Logger Middleware
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-});
 
 // Suppress browser noise (favicon and chrome devtools probe)
 app.get('/favicon.ico', (req, res) => res.status(204).end());

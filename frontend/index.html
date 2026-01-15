@@ -1122,10 +1122,10 @@
 
     <script>
         // --- 1. State & Mock Data (with LocalStorage) ---
-        let API_BASE_URL = 'https://fedex-clone-educational.onrender.com';
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            API_BASE_URL = 'http://localhost:5002';
-        }
+        // Force Render URL for production, localhost for local dev
+        const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+            ? 'http://localhost:5002' 
+            : 'https://fedex-clone-educational.onrender.com';
         console.log('API Configured to:', API_BASE_URL);
 
         let isLoggedIn = false;
