@@ -1,4 +1,31 @@
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5002' : 'https://fedex-clone-educational.onrender.com';
+
+    // Force Render URL for production, localhost for local dev
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.locationhostname    === '127.0.0.1') 
+        ? 'http://localhost:5002' 
+        : 'https://fedex-clone-educational.onrender.com';
+    console.log('API Configured to:', API_BASE_URL);
+
+    // Helper to get auth headers with Firebase token
+    async function getAuthHeaders() {
+        if (!window.firebaseAuth) return { 'Content-Type': 'application/json' };
+        const { auth } = window.firebaseAuth;
+        const headers = { 'Content-Type': 'application/json' };
+        if (auth && auth.currentUser) {
+            try {
+                const token = await auth.currentUser.getIdToken(true);
+                headers['Authorization'] = `Bearer ${token}`;
+            } catch (e) {
+                console.error("Could not get auth token:", e);
+            }
+        }
+        return headers;
+    }
+
+    let isLoggedIn = false;
+
+
+
+ 
 
 // Enhanced tracking function
 async function trackPackage() {

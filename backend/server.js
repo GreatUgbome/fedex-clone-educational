@@ -880,6 +880,52 @@ app.get('/api/track/:id', async (req, res) => {
     }
 });
 
+app.get('/api/track/:id/route', async (req, res) => {
+    const { id } = req.params;
+    const pkg = await Shipment.findOne({ id });
+    
+    if (!pkg) {
+        return res.status(404).json({ error: true, message: "Package not found" });
+    }
+
+    // Mock coordinates for major cities to simulate a route
+    const cityCoords = {
+        "MEMPHIS, TN": { lat: 35.1495, lng: -90.0490 },
+        "INDIANAPOLIS, IN": { lat: 39.7684, lng: -86.1581 },
+        "NEW YORK, NY": { lat: 40.7128, lng: -74.0060 },
+        "CHICAGO, IL": { lat: 41.8781, lng: -87.6298 },
+        "SAN FRANCISCO, CA": { lat: 37.7749, lng: -122.4194 },
+        "OAKLAND, CA": { lat: 37.8044, lng: -122.2711 },
+        "AUSTIN, TX": { lat: 30.2672, lng: -97.7431 },
+        "SEATTLE, WA": { lat: 47.6062, lng: -122.3321 },
+        "PORTLAND, OR": { lat: 45.5152, lng: -122.6784 },
+        "SACRAMENTO, CA": { lat: 38.5816, lng: -121.4944 },
+        "LOS ANGELES, CA": { lat: 34.0522, lng: -118.2437 },
+        "DALLAS, TX": { lat: 32.7767, lng: -96.7970 }
+    };
+
+    const route = (pkg.timeline || [])
+        .map(event => {
+            // Simple matching logic
+            const city = Object.keys(cityCoords).find(c => event.location && event.location.toUpperCase().includes(c));
+            return city ? { ...cityCoords[city], location: event.location, date: event.date } : null;
+        })
+        .filter(Boolean);
+
+    // If no route found from timeline, return empty or mock based on destination
+    res.json(route);
+});
+
+app.get('/api/carbon/:id', (req, res) => {
+    // Mock calculation
+    const estimatedCarbon = (Math.random() * (5.0 - 0.5) + 0.5).toFixed(1);
+    res.json({
+        trackingNumber: req.params.id,
+        amount: estimatedCarbon,
+        unit: 'kg CO2e'
+    });
+});
+
 exports.api = functions.https.onRequest(app);
 
 // Start server locally if not running in Cloud Functions
