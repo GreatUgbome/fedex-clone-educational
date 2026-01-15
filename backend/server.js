@@ -228,16 +228,29 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
     res.json({ path: req.file.filename });
 });
 
-function generateEmailTemplate(title, message, buttonText, buttonLink, footer) {
+function generateEmailTemplate(title, message, buttonText, buttonLink, footer, preheader) {
     const footerContent = footer || `If the button above doesn't work, copy and paste this link into your browser: <br> <a href="${buttonLink}">${buttonLink}</a>`;
+    const preheaderHtml = preheader ? `<span style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${preheader}</span>` : '';
+    
     return `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #4D148C;">${title}</h2>
-            <p>${message}</p>
-            <p style="text-align: center; margin: 30px 0;">
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+            ${preheaderHtml}
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #4D148C; font-style: italic; margin: 0;">Fed<span style="color: #FF6200;">Ex</span> <span style="font-size: 14px; color: #666; font-style: normal; font-weight: normal;">Clone</span></h1>
+            </div>
+            <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h2 style="color: #333333; margin-top: 0;">${title}</h2>
+                <div style="color: #555555; line-height: 1.6; font-size: 16px;">
+                    ${message}
+                </div>
+                <div style="text-align: center; margin: 30px 0;">
                 <a href="${buttonLink}" style="background-color: #FF6200; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">${buttonText}</a>
-            </p>
-            <p style="font-size: 12px; color: #666;">${footerContent}</p>
+                </div>
+                <p style="font-size: 12px; color: #999999; border-top: 1px solid #eeeeee; padding-top: 20px; margin-top: 20px;">${footerContent}</p>
+            </div>
+            <div style="text-align: center; margin-top: 20px; font-size: 11px; color: #aaaaaa;">
+                &copy; ${new Date().getFullYear()} FedEx Clone Educational. All rights reserved.
+            </div>
         </div>
     `;
 }
@@ -524,6 +537,40 @@ app.get('/api/audit-logs', checkAuth, checkAdmin, async (req, res) => {
     res.json(logs.map(l => ({ ...l.toObject(), user: l.username })));
 });
 
+// Send Shipment Notification Email
+app.post('/api/shipments/notify', checkAuth, checkAdmin, async (req, res) => {
+    const { shipmentIds, email } = req.body;
+
+    if (!shipmentIds || !email || shipmentIds.length === 0) {
+        return res.status(400).json({ error: 'Shipment IDs and email are required.' });
+    }
+
+    try {
+        const shipments = await Shipment.find({ 'id': { $in: shipmentIds } });
+
+        const shipmentListHtml = shipments.map(s => `
+            <li>
+                <strong>Tracking ID:</strong> ${s.id}<br>
+                <strong>Status:</strong> ${s.status || 'N/A'}<br>
+                <strong>Destination:</strong> ${s.destination || 'N/A'}
+            </li>
+        `).join('');
+
+        const mailOptions = {
+            from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+            to: email,
+            subject: `Update for ${shipments.length} of your shipments`,
+            html: generateEmailTemplate(`Shipment Status Update`, `Here is the latest status for your selected shipments:<ul style="list-style: none; padding: 0;">${shipmentListHtml}</ul>`, 'Track All Shipments', BASE_URL, null, `Status update for ${shipments.length} packages`)
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.json({ message: 'Notification email sent successfully.' });
+    } catch (e) {
+        console.error("Error sending shipment notification:", e);
+        res.status(500).json({ error: 'Failed to send notification email.' });
+    }
+});
+
 // Get all shipments with full details for CSV Export
 app.get('/api/shipments/export', checkAuth, checkAdmin, async (req, res) => {
     const ships = await Shipment.find({});
@@ -764,7 +811,7 @@ app.post('/api/admin/email/draft', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Create New Shipment
-app.post('/api/shipment', async (req, res) => {
+app.post('/api/shipment', checkAuth, checkAdmin, async (req, res) => {
     const { id, ...data } = req.body;
     if (!id) return res.status(400).json({ error: 'Tracking ID is required' });
     
@@ -780,7 +827,7 @@ app.post('/api/shipment', async (req, res) => {
 });
 
 // Update Existing Shipment
-app.put('/api/shipment/:id', async (req, res) => {
+app.put('/api/shipment/:id', checkAuth, checkAdmin, async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
@@ -799,7 +846,7 @@ app.put('/api/shipment/:id', async (req, res) => {
 });
 
 // Delete Shipment
-app.delete('/api/shipment/:id', async (req, res) => {
+app.delete('/api/shipment/:id', checkAuth, checkAdmin, async (req, res) => {
     const { id } = req.params;
     try {
         const result = await Shipment.deleteOne({ id });

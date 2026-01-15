@@ -9,6 +9,7 @@
         tailwind.config = { darkMode: 'class' }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -512,10 +513,30 @@
                             <button id="bulkStatusBtn" onclick="openBulkStatusModal()" class="hidden bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition shadow w-full md:w-auto ml-2">
                                 <i class="fas fa-edit mr-2"></i> Update Status
                             </button>
+                            <button id="printManifestBtn" onclick="printManifest()" class="hidden bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-list-alt mr-2"></i> Manifest
+                            </button>
+                            <button id="printManifestBtn" onclick="printManifest()" class="hidden bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-list-alt mr-2"></i> Manifest
+                            </button>
+                            <button id="sendEmailBtn" onclick="sendShipmentNotifications()" class="hidden bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-envelope mr-2"></i> Send Email
+                            </button>
+                            <button id="downloadPdfBtn" onclick="downloadManifestPDF()" class="hidden bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition shadow w-full md:w-auto ml-2">
+                                <i class="fas fa-file-pdf mr-2"></i> PDF
+                            </button>
                             <input type="file" id="bulkImportInput" class="hidden" accept=".csv" onchange="handleBulkImport(this)">
                         </div>
                         <div class="mb-4">
-                            <input type="text" id="shipmentSearchInput" onkeyup="handleShipmentSearch()" placeholder="Search by Tracking ID..." class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" id="shipmentSearchInput" onkeyup="handleShipmentSearch()" placeholder="Search by Tracking ID..." class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
+                                <select id="shipmentServiceFilter" onchange="handleServiceFilter()" class="border p-2 rounded focus:border-fedex-purple outline-none text-sm text-gray-600">
+                                    <option value="">All Services</option>
+                                    <option value="FedEx Ground">FedEx Ground</option>
+                                    <option value="FedEx Express">FedEx Express</option>
+                                    <option value="FedEx Home Delivery">FedEx Home Delivery</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="bg-white rounded shadow overflow-x-auto border border-gray-200">
                             <table class="w-full admin-table text-sm">
@@ -889,6 +910,38 @@
                 <div class="flex justify-end space-x-2 pt-4 border-t">
                     <button onclick="closeModal('bulkStatusModal')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
                     <button onclick="applyBulkStatusUpdate()" class="px-4 py-2 bg-fedex-orange text-white rounded hover:bg-orange-600 font-bold">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Send Email Modal -->
+    <div id="adminEmailModal" class="hidden fixed inset-0 z-[65] modal-overlay flex justify-center items-center px-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden slide-down">
+            <div class="bg-fedex-purple p-3 text-white font-bold flex justify-between">
+                <span>Send Email</span>
+                <button onclick="closeModal('adminEmailModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Recipient</label>
+                    <input type="email" id="emailRecipient" class="w-full border p-2 rounded bg-gray-100" readonly>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Subject</label>
+                    <input type="text" id="emailSubject" class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Message</label>
+                    <textarea id="emailMessage" class="w-full border p-2 rounded focus:border-fedex-purple outline-none h-32"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Attachments</label>
+                    <input type="file" id="emailAttachments" multiple class="w-full border p-2 rounded bg-gray-50 text-sm">
+                </div>
+                <div class="flex justify-end space-x-2 pt-4 border-t">
+                    <button onclick="closeModal('adminEmailModal')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onclick="sendCustomEmail()" class="px-4 py-2 bg-fedex-purple text-white rounded hover:bg-purple-800 font-bold">Send</button>
                 </div>
             </div>
         </div>
@@ -2144,8 +2197,11 @@
                 tbody.innerHTML = '';
                 
                 const query = document.getElementById('shipmentSearchInput').value.toLowerCase();
+                const serviceFilter = document.getElementById('shipmentServiceFilter').value;
+
                 const filteredData = allShipmentsData.filter(pkg => 
-                    pkg.trackingNumber.toLowerCase().includes(query)
+                    pkg.trackingNumber.toLowerCase().includes(query) &&
+                    (serviceFilter === "" || pkg.service === serviceFilter)
                 );
 
                 // Sort Data
@@ -2188,6 +2244,7 @@
                         <td class="text-right">
                             <button onclick="printLabel('${pkg.trackingNumber}')" class="text-gray-600 hover:text-gray-800 mr-2 bg-gray-100 p-2 rounded-full" title="Print Label"><i class="fas fa-print"></i></button>
                             <button onclick="openEditModal('${pkg.trackingNumber}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
+                            <button onclick="duplicateShipment('${pkg.trackingNumber}')" class="text-green-600 hover:text-green-800 mr-2 bg-green-50 p-2 rounded-full" title="Duplicate"><i class="fas fa-copy"></i></button>
                             <button onclick="deleteShipment('${pkg.trackingNumber}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
                         </td>
                     `;
@@ -2251,13 +2308,16 @@
         function updateBulkDeleteButton() {
             const btn = document.getElementById('bulkDeleteBtn');
             const statusBtn = document.getElementById('bulkStatusBtn');
+            const manifestBtn = document.getElementById('printManifestBtn');
             if (selectedShipments.size > 0) {
                 btn.classList.remove('hidden');
                 btn.innerHTML = `<i class="fas fa-trash-alt mr-2"></i> Delete (${selectedShipments.size})`;
                 statusBtn.classList.remove('hidden');
+                manifestBtn.classList.remove('hidden');
             } else {
                 btn.classList.add('hidden');
                 statusBtn.classList.add('hidden');
+                manifestBtn.classList.add('hidden');
             }
         }
 
@@ -2286,6 +2346,96 @@
             document.getElementById('selectAllShipments').checked = false;
             updateBulkDeleteButton();
             renderAdminTable();
+        }
+
+        async function duplicateShipment(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/track/${id}`);
+                const pkg = await response.json();
+                
+                // Open modal in create mode but pre-fill with existing data
+                const title = document.getElementById('editModalTitle');
+                title.textContent = "Duplicate Shipment";
+                
+                // Generate a new random ID or leave blank for manual entry
+                const newId = Math.floor(100000000000 + Math.random() * 900000000000).toString();
+                
+                document.getElementById('editOriginalId').value = ""; // Empty means create new
+                document.getElementById('editTrackingId').value = newId;
+                document.getElementById('editTrackingId').disabled = false;
+                
+                document.getElementById('editStatus').value = "created"; // Reset status
+                document.getElementById('editProgress').value = 0;
+                
+                document.getElementById('editLocation').value = pkg.destination || '';
+                document.getElementById('editDate').value = ""; // Clear date
+                document.getElementById('editService').value = pkg.service || '';
+                document.getElementById('editWeight').value = pkg.weight || '';
+                document.getElementById('editDimensions').value = pkg.dimensions || '';
+                document.getElementById('editPieces').value = pkg.pieces || 1;
+                
+                renderEditTimeline([]); // Clear timeline
+                
+                openModal('adminEditModal');
+                showToast("Shipment data copied. Review and save.");
+            } catch (e) {
+                showToast("Error duplicating shipment", "error");
+            }
+        }
+
+        async function printManifest() {
+            if (selectedShipments.size === 0) return;
+            
+            const shipments = allShipmentsData.filter(p => selectedShipments.has(p.trackingNumber));
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Shipment Manifest</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; }
+                        h1 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
+                        th { background: #f0f0f0; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Shipment Manifest</h1>
+                    <p>Date: ${new Date().toLocaleString()}</p>
+                    <p>Total Shipments: ${shipments.length}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tracking ID</th>
+                                <th>Service</th>
+                                <th>Destination</th>
+                                <th>Weight</th>
+                                <th>Pieces</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${shipments.map(s => `
+                                <tr>
+                                    <td>${s.trackingNumber}</td>
+                                    <td>${s.service}</td>
+                                    <td>${s.destination}</td>
+                                    <td>${s.weight}</td>
+                                    <td>${s.pieces}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
         }
 
         function openBulkStatusModal() {
@@ -2331,7 +2481,179 @@
             renderAdminTable();
         }
 
+        async function duplicateShipment(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/track/${id}`);
+                const pkg = await response.json();
+                
+                // Open modal in create mode but pre-fill with existing data
+                const title = document.getElementById('editModalTitle');
+                title.textContent = "Duplicate Shipment";
+                
+                // Generate a new random ID or leave blank for manual entry
+                const newId = Math.floor(100000000000 + Math.random() * 900000000000).toString();
+                
+                document.getElementById('editOriginalId').value = ""; // Empty means create new
+                document.getElementById('editTrackingId').value = newId;
+                document.getElementById('editTrackingId').disabled = false;
+                
+                document.getElementById('editStatus').value = "created"; // Reset status
+                document.getElementById('editProgress').value = 0;
+                
+                document.getElementById('editLocation').value = pkg.destination || '';
+                document.getElementById('editDate').value = ""; // Clear date
+                document.getElementById('editService').value = pkg.service || '';
+                document.getElementById('editWeight').value = pkg.weight || '';
+                document.getElementById('editDimensions').value = pkg.dimensions || '';
+                document.getElementById('editPieces').value = pkg.pieces || 1;
+                
+                renderEditTimeline([]); // Clear timeline
+                
+                openModal('adminEditModal');
+                showToast("Shipment data copied. Review and save.");
+            } catch (e) {
+                showToast("Error duplicating shipment", "error");
+            }
+        }
+
+        async function printManifest() {
+            if (selectedShipments.size === 0) return;
+            
+            const ids = Array.from(selectedShipments);
+            // In a real app, you might fetch details for all IDs if not already available
+            // For now, we filter from allShipmentsData which is already loaded
+            const shipments = allShipmentsData.filter(p => selectedShipments.has(p.trackingNumber));
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Shipment Manifest</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; }
+                        h1 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
+                        th { background: #f0f0f0; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Shipment Manifest</h1>
+                    <p>Date: ${new Date().toLocaleString()}</p>
+                    <p>Total Shipments: ${shipments.length}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tracking ID</th>
+                                <th>Service</th>
+                                <th>Destination</th>
+                                <th>Weight</th>
+                                <th>Pieces</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${shipments.map(s => `
+                                <tr>
+                                    <td>${s.trackingNumber}</td>
+                                    <td>${s.service}</td>
+                                    <td>${s.destination}</td>
+                                    <td>${s.weight}</td>
+                                    <td>${s.pieces}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
+        }
+
+        function downloadManifestPDF() {
+            if (selectedShipments.size === 0) return;
+            
+            const shipments = allShipmentsData.filter(p => selectedShipments.has(p.trackingNumber));
+            
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <div style="padding: 20px; font-family: sans-serif;">
+                    <h1 style="border-bottom: 2px solid #333; padding-bottom: 10px; color: #4D148C;">Shipment Manifest</h1>
+                    <p>Date: ${new Date().toLocaleString()}</p>
+                    <p>Total Shipments: ${shipments.length}</p>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px;">
+                        <thead>
+                            <tr style="background-color: #f0f0f0;">
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Tracking ID</th>
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Service</th>
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Destination</th>
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Weight</th>
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Pieces</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${shipments.map(s => `
+                                <tr>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">${s.trackingNumber}</td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">${s.service}</td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">${s.destination}</td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">${s.weight}</td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">${s.pieces}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            const opt = {
+                margin: 0.5,
+                filename: 'shipment_manifest.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        async function sendShipmentNotifications() {
+            if (selectedShipments.size === 0) return;
+
+            const recipientEmail = prompt("Enter recipient email address for notifications:");
+            if (!recipientEmail) return;
+
+            const ids = Array.from(selectedShipments);
+            showToast(`Sending notifications for ${ids.length} shipments...`);
+
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_BASE_URL}/api/shipments/notify`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ shipmentIds: ids, email: recipientEmail })
+                });
+
+                if (response.ok) {
+                    showToast("Email notifications sent successfully.", "success");
+                } else {
+                    throw new Error("Failed to send notifications.");
+                }
+            } catch (e) {
+                showToast(e.message, "error");
+            }
+        }
+
         function handleShipmentSearch() {
+            currentShipmentPage = 1;
+            renderAdminTable();
+        }
+
+        function handleServiceFilter() {
             currentShipmentPage = 1;
             renderAdminTable();
         }
@@ -2662,21 +2984,19 @@
                 try {
                     // Process sequentially or use a bulk endpoint if available
                     // For now, we'll loop through and create them individually
+                    const headers = await getAuthHeaders();
                     for (const shipment of shipments) {
-                        await fetch(`${API_BASE_URL}/api/packages`, { // Assuming backend supports this or similar endpoint
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(shipment)
-                        });
                         if (isImportCancelled) {
                             showToast("Import cancelled by user.", "info");
                             break;
                         }
 
                         try {
-                            const res = await fetch(`${API_BASE_URL}/api/packages`, { // Assuming backend supports this or similar endpoint
+                            // Ensure ID is present for backend
+                            shipment.id = shipment.trackingNumber;
+                            const res = await fetch(`${API_BASE_URL}/api/shipment`, { 
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: headers,
                                 body: JSON.stringify(shipment)
                             });
                             if (!res.ok) throw new Error('Failed');
@@ -2771,7 +3091,9 @@
                     <td class="hidden sm:table-cell">${user.email || ''}</td>
                     <td><span class="bg-gray-200 text-xs px-2 py-1 rounded text-gray-700">${user.role}</span></td>
                     <td class="text-right">
+                        <button onclick="openEmailModal('${user.email || ''}')" class="text-green-600 hover:text-green-800 mr-2 bg-green-50 p-2 rounded-full" title="Send Email"><i class="fas fa-envelope"></i></button>
                         <button onclick="openUserModal('${user._id}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
+                            <button onclick="duplicateShipment('${pkg.trackingNumber}')" class="text-green-600 hover:text-green-800 mr-2 bg-green-50 p-2 rounded-full" title="Duplicate"><i class="fas fa-copy"></i></button>
                         <button onclick="deleteUser('${user._id}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
@@ -2853,6 +3175,114 @@
                 renderUsersTable();
                 closeModal('adminUserModal');
                 showToast("User saved successfully.");
+            }
+        }
+
+        function openEmailModal(email) {
+            if (!email) {
+                showToast("User has no email address", "error");
+                return;
+            }
+            document.getElementById('emailRecipient').value = email;
+            document.getElementById('emailSubject').value = "";
+            document.getElementById('emailMessage').value = "";
+            document.getElementById('emailAttachments').value = "";
+            openModal('adminEmailModal');
+        }
+
+        async function sendCustomEmail() {
+            const email = document.getElementById('emailRecipient').value;
+            const subject = document.getElementById('emailSubject').value;
+            const message = document.getElementById('emailMessage').value;
+            const attachmentsInput = document.getElementById('emailAttachments');
+
+            if (!subject || !message) {
+                showToast("Subject and message are required", "error");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('subject', subject);
+            formData.append('message', message);
+            
+            if (attachmentsInput.files.length > 0) {
+                for (let i = 0; i < attachmentsInput.files.length; i++) {
+                    formData.append('attachments', attachmentsInput.files[i]);
+                }
+            }
+
+            try {
+                // Note: Do not set Content-Type header manually when using FormData; fetch sets it automatically with boundary
+                const response = await fetch(`${API_BASE_URL}/api/admin/send-email`, {
+                    method: 'POST',
+                    // headers: headers, // Auth headers logic needs adjustment for FormData if token is required
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showToast("Email sent successfully", "success");
+                    closeModal('adminEmailModal');
+                } else {
+                    const data = await response.json();
+                    showToast(data.error || "Failed to send email", "error");
+                }
+            } catch (e) {
+                showToast("Network error", "error");
+            }
+        }
+        
+        // Overriding getAuthHeaders isn't enough because FormData requires browser-generated boundary.
+        // We need to append the token to headers manually in the fetch call above if using checkAuth middleware.
+        // Let's update sendCustomEmail to include the Authorization header correctly.
+        
+        // Re-implementing sendCustomEmail with correct auth header handling for FormData
+        async function sendCustomEmail() {
+            const email = document.getElementById('emailRecipient').value;
+            const subject = document.getElementById('emailSubject').value;
+            const message = document.getElementById('emailMessage').value;
+            const attachmentsInput = document.getElementById('emailAttachments');
+
+            if (!subject || !message) {
+                showToast("Subject and message are required", "error");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('subject', subject);
+            formData.append('message', message);
+            
+            if (attachmentsInput.files.length > 0) {
+                for (let i = 0; i < attachmentsInput.files.length; i++) {
+                    formData.append('attachments', attachmentsInput.files[i]);
+                }
+            }
+
+            try {
+                // Get token directly
+                let token = '';
+                if (window.firebaseAuth.auth.currentUser) {
+                    token = await window.firebaseAuth.auth.currentUser.getIdToken(true);
+                }
+                
+                const response = await fetch(`${API_BASE_URL}/api/admin/send-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showToast("Email sent successfully", "success");
+                    closeModal('adminEmailModal');
+                } else {
+                    const data = await response.json();
+                    showToast(data.error || "Failed to send email", "error");
+                }
+            } catch (e) {
+                showToast("Network error", "error");
             }
         }
 
