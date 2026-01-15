@@ -85,6 +85,10 @@ async function submitAuth() {
     const termsAccepted = document.getElementById('termsCheckbox').checked;
     const endpoint = authMode === 'login' ? '/login' : '/signup';
 
+    if (!username || !password) {
+        return showToast("Username and password are required", "error");
+    }
+
     if (authMode === 'signup' && !termsAccepted) {
         return showToast("You must agree to the Terms & Conditions", "error");
     }

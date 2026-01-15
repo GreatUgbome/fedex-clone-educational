@@ -1652,9 +1652,18 @@
 
         async function handleAuth(e) {
             e.preventDefault();
-            const email = document.getElementById('loginEmail').value ? document.getElementById('loginEmail').value.trim() : '';
-            const password = document.getElementById('loginPassword').value ? document.getElementById('loginPassword').value.trim() : '';
-            const name = document.getElementById('signupName').value ? document.getElementById('signupName').value.trim() : '';
+            const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
+            const nameInput = document.getElementById('signupName');
+
+            const email = emailInput ? emailInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value.trim() : '';
+            const name = nameInput ? nameInput.value.trim() : '';
+
+            if (!email || !password) {
+                showToast("Please enter both email and password.", "error");
+                return;
+            }
             
             // Use Firebase Auth from window object
             const { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendEmailVerification } = window.firebaseAuth;
