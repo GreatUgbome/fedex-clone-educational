@@ -645,7 +645,8 @@ app.post('/api/admin/user', async (req, res) => {
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'User already exists' });
     
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const pass = password || 'password123'; // Default password if not provided
+    const hashedPassword = await bcrypt.hash(pass, 10);
     const newUser = new User({ username, email, password: hashedPassword, role });
     await newUser.save();
     res.json({ message: 'User created' });
@@ -797,7 +798,7 @@ app.post('/api/admin/email/draft', async (req, res) => {
 });
 
 // Create New Shipment
-app.post('/api/shipment', async (req, res) => {
+app.post('/api/shipment', checkAuth, checkAdmin, async (req, res) => {
     const { id, ...data } = req.body;
     if (!id) return res.status(400).json({ error: 'Tracking ID is required' });
     
@@ -813,7 +814,7 @@ app.post('/api/shipment', async (req, res) => {
 });
 
 // Update Existing Shipment
-app.put('/api/shipment/:id', async (req, res) => {
+app.put('/api/shipment/:id', checkAuth, checkAdmin, async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
@@ -832,7 +833,7 @@ app.put('/api/shipment/:id', async (req, res) => {
 });
 
 // Delete Shipment
-app.delete('/api/shipment/:id', async (req, res) => {
+app.delete('/api/shipment/:id', checkAuth, checkAdmin, async (req, res) => {
     const { id } = req.params;
     try {
         const result = await Shipment.deleteOne({ id });
