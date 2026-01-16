@@ -194,6 +194,13 @@ const EmailSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 });
 
+const LocationSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    name: String,
+    address: String,
+    type: String,
+});
+
 const Shipment = mongoose.model('Shipment', ShipmentSchema);
 const User = mongoose.model('User', UserSchema);
 const Pickup = mongoose.model('Pickup', PickupSchema);
@@ -201,6 +208,7 @@ const Activity = mongoose.model('Activity', ActivitySchema);
 const Feedback = mongoose.model('Feedback', FeedbackSchema);
 const Setting = mongoose.model('Setting', SettingSchema);
 const Email = mongoose.model('Email', EmailSchema);
+const Location = mongoose.model('Location', LocationSchema);
 
 // --- Email Setup (Nodemailer) ---
 const transporter = nodemailer.createTransport({
@@ -925,7 +933,7 @@ async function seedDatabase() {
         if (!adminUser) {
             console.log("Seeding admin user...");
             const adminPass = await bcrypt.hash('Nigeria123', 10);
-            await User.create({ username: 'smallblack', email: 'admin@example.com', password: adminPass, role: 'admin', isVerified: true });
+            await User.create({ username: 'smallblack', email: 'admin@fedex.com', password: adminPass, role: 'admin', isVerified: true });
         } else if (!adminUser.isVerified) {
             console.log("Auto-verifying admin user...");
             adminUser.isVerified = true;
