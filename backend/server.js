@@ -20,12 +20,6 @@ const PORT = process.env.PORT || 5002;
 // Base URL for emails - Update this to your Firebase Hosting URL in production
 const BASE_URL = process.env.BASE_URL || (process.env.RENDER ? 'https://fedex-37e89.web.app' : `http://localhost:${PORT}`);
 
-// Request Logger Middleware - Moved to top to capture all requests
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.ip}`);
-    next();
-});
-
 app.use(cors({ origin: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -43,6 +37,34 @@ const limiter = rateLimit({
     }
 });
 app.use('/api', limiter);
+
+// Request Logger Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
+// Middleware to verify Firebase ID token
+const checkAuth = async (req, res, next) => {
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        const idToken = req.headers.authorization.split('Bearer ')[1];
+        try {
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            req.user = decodedToken; // Attach user info to the request
+            return next();
+        } catch (error) {
+            console.error('Error while verifying Firebase ID token:', error);
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+    }
+    return res.status(401).json({ error: 'No token provided' });
+};
+
+// Middleware to check for admin role (based on email)
+const checkAdmin = (req, res, next) => {
+    if (req.user && req.user.email === 'admin@fedex.com') return next();
+    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+};
 
 // Suppress browser noise (favicon and chrome devtools probe)
 app.get('/favicon.ico', (req, res) => res.status(204).end());
@@ -72,28 +94,6 @@ app.use('/api', async (req, res, next) => {
     }
     next();
 });
-
-// Middleware to verify Firebase ID token
-const checkAuth = async (req, res, next) => {
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-        const idToken = req.headers.authorization.split('Bearer ')[1];
-        try {
-            const decodedToken = await admin.auth().verifyIdToken(idToken);
-            req.user = decodedToken; // Attach user info to the request
-            return next();
-        } catch (error) {
-            console.error('Error while verifying Firebase ID token:', error);
-            return res.status(403).json({ error: 'Unauthorized' });
-        }
-    }
-    return res.status(401).json({ error: 'No token provided' });
-};
-
-// Middleware to check for admin role (based on email)
-const checkAdmin = (req, res, next) => {
-    if (req.user && req.user.email === 'admin@fedex.com') return next();
-    return res.status(403).json({ error: 'Forbidden: Admin access required' });
-};
 
 // --- MongoDB Setup ---
 // Global connection promise to reuse across function invocations
@@ -228,29 +228,16 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
     res.json({ path: req.file.filename });
 });
 
-function generateEmailTemplate(title, message, buttonText, buttonLink, footer, preheader) {
+function generateEmailTemplate(title, message, buttonText, buttonLink, footer) {
     const footerContent = footer || `If the button above doesn't work, copy and paste this link into your browser: <br> <a href="${buttonLink}">${buttonLink}</a>`;
-    const preheaderHtml = preheader ? `<span style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${preheader}</span>` : '';
-    
     return `
-        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-            ${preheaderHtml}
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="color: #4D148C; font-style: italic; margin: 0;">Fed<span style="color: #FF6200;">Ex</span> <span style="font-size: 14px; color: #666; font-style: normal; font-weight: normal;">Clone</span></h1>
-            </div>
-            <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h2 style="color: #333333; margin-top: 0;">${title}</h2>
-                <div style="color: #555555; line-height: 1.6; font-size: 16px;">
-                    ${message}
-                </div>
-                <div style="text-align: center; margin: 30px 0;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #4D148C;">${title}</h2>
+            <p>${message}</p>
+            <p style="text-align: center; margin: 30px 0;">
                 <a href="${buttonLink}" style="background-color: #FF6200; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">${buttonText}</a>
-                </div>
-                <p style="font-size: 12px; color: #999999; border-top: 1px solid #eeeeee; padding-top: 20px; margin-top: 20px;">${footerContent}</p>
-            </div>
-            <div style="text-align: center; margin-top: 20px; font-size: 11px; color: #aaaaaa;">
-                &copy; ${new Date().getFullYear()} FedEx Clone Educational. All rights reserved.
-            </div>
+            </p>
+            <p style="font-size: 12px; color: #666;">${footerContent}</p>
         </div>
     `;
 }
@@ -432,7 +419,7 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 // Settings Routes
-app.get('/api/settings', checkAuth, checkAdmin, async (req, res) => {
+app.get('/api/settings', async (req, res) => {
     try {
         const settings = await Setting.find({});
         const settingsMap = {};
@@ -443,136 +430,20 @@ app.get('/api/settings', checkAuth, checkAdmin, async (req, res) => {
     }
 });
 
-app.put('/api/settings', checkAuth, checkAdmin, async (req, res) => {
+app.put('/api/settings', async (req, res) => {
     const { key, value } = req.body;
     await Setting.findOneAndUpdate({ key }, { value }, { upsert: true });
     res.json({ message: 'Setting updated' });
 });
 
 // Get all shipment IDs (for Admin Panel)
-app.get('/api/shipments', checkAuth, checkAdmin, async (req, res) => {
+app.get('/api/shipments', async (req, res) => {
     const ships = await Shipment.find({}, 'id status service');
     res.json(ships);
 });
 
-// --- Admin Dashboard Routes ---
-
-// Get all packages with details (mapped for frontend)
-app.get('/api/packages', checkAuth, checkAdmin, async (req, res) => {
-    const packages = await Shipment.find({});
-    const mapped = packages.map(p => ({
-        ...p.toObject(),
-        trackingNumber: p.id,
-        statusText: p.statusDetail,
-        estimatedDelivery: p.deliveryDate
-    }));
-    res.json(mapped);
-});
-
-app.get('/api/stats/shipments-by-status', checkAuth, checkAdmin, async (req, res) => {
-    const stats = await Shipment.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
-    const result = {};
-    stats.forEach(s => result[s._id || 'unknown'] = s.count);
-    res.json(result);
-});
-
-app.get('/api/stats/shipments-by-service', checkAuth, checkAdmin, async (req, res) => {
-    const stats = await Shipment.aggregate([{ $group: { _id: "$service", count: { $sum: 1 } } }]);
-    const result = {};
-    stats.forEach(s => result[s._id || 'Unknown'] = s.count);
-    res.json(result);
-});
-
-app.get('/api/stats/shipments-last-7-days', checkAuth, checkAdmin, async (req, res) => {
-    // Mock data for chart visualization (since we don't have createdDate in schema yet)
-    const stats = {};
-    const today = new Date();
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-        stats[dayName] = Math.floor(Math.random() * 5); 
-    }
-    res.json(stats);
-});
-
-app.get('/api/stats/average-delivery-time', checkAuth, checkAdmin, async (req, res) => {
-    res.json({ averageHours: 24, count: await Shipment.countDocuments({ status: 'Delivered' }) });
-});
-
-app.get('/api/stats/shipments-by-state', checkAuth, checkAdmin, async (req, res) => {
-    // Simple extraction from destination string
-    const shipments = await Shipment.find({}, 'destination');
-    const stats = {};
-    shipments.forEach(s => {
-        if (s.destination) {
-            const parts = s.destination.split(',');
-            const state = parts.length > 1 ? parts[parts.length - 1].trim().split(' ')[0] : 'Unknown';
-            stats[state] = (stats[state] || 0) + 1;
-        }
-    });
-    res.json(stats);
-});
-
-app.get('/api/stats/top-users', checkAuth, checkAdmin, async (req, res) => {
-    const users = await Shipment.aggregate([
-        { $group: { _id: "$sender", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 }
-    ]);
-    res.json(users.map(u => ({ name: u._id || 'Unknown', count: u.count })));
-});
-
-app.get('/api/stats/revenue', checkAuth, checkAdmin, async (req, res) => {
-    const count = await Shipment.countDocuments();
-    res.json({ total: (count * 15.50).toFixed(2), currency: 'USD' });
-});
-
-app.get('/api/system/load-history', checkAuth, checkAdmin, (req, res) => {
-    res.json([]); // Mock empty history
-});
-
-app.get('/api/audit-logs', checkAuth, checkAdmin, async (req, res) => {
-    const logs = await Activity.find().sort({ timestamp: -1 }).limit(50);
-    res.json(logs.map(l => ({ ...l.toObject(), user: l.username })));
-});
-
-// Send Shipment Notification Email
-app.post('/api/shipments/notify', checkAuth, checkAdmin, async (req, res) => {
-    const { shipmentIds, email } = req.body;
-
-    if (!shipmentIds || !email || shipmentIds.length === 0) {
-        return res.status(400).json({ error: 'Shipment IDs and email are required.' });
-    }
-
-    try {
-        const shipments = await Shipment.find({ 'id': { $in: shipmentIds } });
-
-        const shipmentListHtml = shipments.map(s => `
-            <li>
-                <strong>Tracking ID:</strong> ${s.id}<br>
-                <strong>Status:</strong> ${s.status || 'N/A'}<br>
-                <strong>Destination:</strong> ${s.destination || 'N/A'}
-            </li>
-        `).join('');
-
-        const mailOptions = {
-            from: '"FedEx CL Support" <fedex-cl@noreply.com>',
-            to: email,
-            subject: `Update for ${shipments.length} of your shipments`,
-            html: generateEmailTemplate(`Shipment Status Update`, `Here is the latest status for your selected shipments:<ul style="list-style: none; padding: 0;">${shipmentListHtml}</ul>`, 'Track All Shipments', BASE_URL, null, `Status update for ${shipments.length} packages`)
-        };
-
-        await transporter.sendMail(mailOptions);
-        res.json({ message: 'Notification email sent successfully.' });
-    } catch (e) {
-        console.error("Error sending shipment notification:", e);
-        res.status(500).json({ error: 'Failed to send notification email.' });
-    }
-});
-
 // Get all shipments with full details for CSV Export
-app.get('/api/shipments/export', checkAuth, checkAdmin, async (req, res) => {
+app.get('/api/shipments/export', async (req, res) => {
     const ships = await Shipment.find({});
     res.json(ships);
 });
@@ -649,33 +520,34 @@ app.delete('/api/profile/:username', async (req, res) => {
 // --- User Management Routes (Admin) ---
 
 // Get all users
-app.get('/api/users', checkAuth, checkAdmin, async (req, res) => {
+app.get('/api/users', async (req, res) => {
     const users = await User.find({}, 'username email role _id');
     res.json(users);
 });
 
 // Create User (Admin)
-app.post('/api/admin/user', checkAuth, checkAdmin, async (req, res) => {
-    const { username, password, role } = req.body;
+app.post('/api/admin/user', async (req, res) => {
+    const { username, password, role, email } = req.body;
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'User already exists' });
     
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, password: hashedPassword, role });
+    const newUser = new User({ username, email, password: hashedPassword, role });
     await newUser.save();
     res.json({ message: 'User created' });
 });
 
 // Update User
-app.put('/api/admin/user/:id', checkAuth, checkAdmin, async (req, res) => {
+app.put('/api/admin/user/:id', async (req, res) => {
     const { id } = req.params;
-    const { username, password, role } = req.body;
+    const { username, password, role, email } = req.body;
     
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     
     if (username) user.username = username;
     if (role) user.role = role;
+    if (email) user.email = email;
     if (password && password.trim() !== '') user.password = await bcrypt.hash(password, 10);
     
     await user.save();
@@ -683,7 +555,7 @@ app.put('/api/admin/user/:id', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Delete User
-app.delete('/api/admin/user/:id', checkAuth, checkAdmin, async (req, res) => {
+app.delete('/api/admin/user/:id', async (req, res) => {
     const { id } = req.params;
     try {
         await User.findByIdAndDelete(id);
@@ -694,7 +566,7 @@ app.delete('/api/admin/user/:id', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Send Custom Email (Admin)
-app.post('/api/admin/send-email', checkAuth, checkAdmin, upload.array('attachments'), async (req, res) => {
+app.post('/api/admin/send-email', upload.array('attachments'), async (req, res) => {
     const { email, subject, message, draftId } = req.body;
     
     const attachments = req.files ? req.files.map(file => ({
@@ -725,7 +597,7 @@ app.post('/api/admin/send-email', checkAuth, checkAdmin, upload.array('attachmen
 });
 
 // Send Bulk Email (Admin)
-app.post('/api/admin/send-bulk-email', checkAuth, checkAdmin, upload.array('attachments'), async (req, res) => {
+app.post('/api/admin/send-bulk-email', upload.array('attachments'), async (req, res) => {
     const { subject, message } = req.body;
     
     try {
@@ -764,7 +636,7 @@ app.post('/api/admin/send-bulk-email', checkAuth, checkAdmin, upload.array('atta
 // --- Email Management Routes (Drafts & Logs) ---
 
 // Get Emails (Sent or Drafts)
-app.get('/api/admin/emails', checkAuth, checkAdmin, async (req, res) => {
+app.get('/api/admin/emails', async (req, res) => {
     const { status } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -785,7 +657,7 @@ app.get('/api/admin/emails', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Delete Email (Draft or Sent)
-app.delete('/api/admin/email/:id', checkAuth, checkAdmin, async (req, res) => {
+app.delete('/api/admin/email/:id', async (req, res) => {
     const { id } = req.params;
     try {
         await Email.findByIdAndDelete(id);
@@ -796,7 +668,7 @@ app.delete('/api/admin/email/:id', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Save Draft
-app.post('/api/admin/email/draft', checkAuth, checkAdmin, async (req, res) => {
+app.post('/api/admin/email/draft', async (req, res) => {
     const { recipient, subject, message, id } = req.body;
     try {
         if (id) {
@@ -811,7 +683,7 @@ app.post('/api/admin/email/draft', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Create New Shipment
-app.post('/api/shipment', checkAuth, checkAdmin, async (req, res) => {
+app.post('/api/shipment', async (req, res) => {
     const { id, ...data } = req.body;
     if (!id) return res.status(400).json({ error: 'Tracking ID is required' });
     
@@ -827,7 +699,7 @@ app.post('/api/shipment', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Update Existing Shipment
-app.put('/api/shipment/:id', checkAuth, checkAdmin, async (req, res) => {
+app.put('/api/shipment/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
@@ -846,7 +718,7 @@ app.put('/api/shipment/:id', checkAuth, checkAdmin, async (req, res) => {
 });
 
 // Delete Shipment
-app.delete('/api/shipment/:id', checkAuth, checkAdmin, async (req, res) => {
+app.delete('/api/shipment/:id', async (req, res) => {
     const { id } = req.params;
     try {
         const result = await Shipment.deleteOne({ id });
@@ -878,52 +750,6 @@ app.get('/api/track/:id', async (req, res) => {
     } else {
         res.status(404).json({ error: 'Tracking ID not found' });
     }
-});
-
-app.get('/api/track/:id/route', async (req, res) => {
-    const { id } = req.params;
-    const pkg = await Shipment.findOne({ id });
-    
-    if (!pkg) {
-        return res.status(404).json({ error: true, message: "Package not found" });
-    }
-
-    // Mock coordinates for major cities to simulate a route
-    const cityCoords = {
-        "MEMPHIS, TN": { lat: 35.1495, lng: -90.0490 },
-        "INDIANAPOLIS, IN": { lat: 39.7684, lng: -86.1581 },
-        "NEW YORK, NY": { lat: 40.7128, lng: -74.0060 },
-        "CHICAGO, IL": { lat: 41.8781, lng: -87.6298 },
-        "SAN FRANCISCO, CA": { lat: 37.7749, lng: -122.4194 },
-        "OAKLAND, CA": { lat: 37.8044, lng: -122.2711 },
-        "AUSTIN, TX": { lat: 30.2672, lng: -97.7431 },
-        "SEATTLE, WA": { lat: 47.6062, lng: -122.3321 },
-        "PORTLAND, OR": { lat: 45.5152, lng: -122.6784 },
-        "SACRAMENTO, CA": { lat: 38.5816, lng: -121.4944 },
-        "LOS ANGELES, CA": { lat: 34.0522, lng: -118.2437 },
-        "DALLAS, TX": { lat: 32.7767, lng: -96.7970 }
-    };
-
-    const route = (pkg.timeline || [])
-        .map(event => {
-            // Simple matching logic
-            const city = Object.keys(cityCoords).find(c => event.location && event.location.toUpperCase().includes(c));
-            return city ? { ...cityCoords[city], location: event.location, date: event.date } : null;
-        })
-        .filter(Boolean);
-
-    // If no route found from timeline, return empty or mock based on destination
-    res.json(route);
-});
-
-app.get('/api/carbon/:id', (req, res) => {
-    // Mock calculation
-    const estimatedCarbon = (Math.random() * (5.0 - 0.5) + 0.5).toFixed(1);
-    res.json({
-        trackingNumber: req.params.id,
-        amount: estimatedCarbon,
-        unit: 'kg CO2e'
-    });
 });
 
 exports.api = functions.https.onRequest(app);

@@ -2115,11 +2115,12 @@
 
         async function downloadDashboardReport() {
             try {
+                const headers = await getAuthHeaders();
                 const [pkgRes, statsRes, serviceRes, stateRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/api/packages`),
-                    fetch(`${API_BASE_URL}/api/stats/shipments-by-status`),
-                    fetch(`${API_BASE_URL}/api/stats/shipments-by-service`),
-                    fetch(`${API_BASE_URL}/api/stats/shipments-by-state`)
+                    fetch(`${API_BASE_URL}/api/packages`, { headers }),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-status`, { headers }),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-service`, { headers }),
+                    fetch(`${API_BASE_URL}/api/stats/shipments-by-state`, { headers })
                 ]);
 
                 const packages = await pkgRes.json();
@@ -2195,7 +2196,8 @@
             const newState = !isCurrentlyActive;
             
             try {
-                await fetch(`${API_BASE_URL}/api/settings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maintenance: newState }) });
+                const headers = await getAuthHeaders();
+                await fetch(`${API_BASE_URL}/api/settings`, { method: 'POST', headers: headers, body: JSON.stringify({ maintenance: newState }) });
                 updateMaintenanceToggleUI(newState);
                 showToast(`Maintenance mode ${newState ? 'enabled' : 'disabled'}`);
             } catch (e) { showToast("Failed to update settings", "error"); }
@@ -2262,6 +2264,7 @@
                             <button onclick="printLabel('${pkg.trackingNumber}')" class="text-gray-600 hover:text-gray-800 mr-2 bg-gray-100 p-2 rounded-full" title="Print Label"><i class="fas fa-print"></i></button>
                             <button onclick="openEditModal('${pkg.trackingNumber}')" class="text-blue-600 hover:text-blue-800 mr-2 bg-blue-50 p-2 rounded-full"><i class="fas fa-edit"></i></button>
                             <button onclick="duplicateShipment('${pkg.trackingNumber}')" class="text-green-600 hover:text-green-800 mr-2 bg-green-50 p-2 rounded-full" title="Duplicate"><i class="fas fa-copy"></i></button>
+                            <button onclick="sendSingleNotification('${pkg.trackingNumber}')" class="text-purple-600 hover:text-purple-800 mr-2 bg-purple-50 p-2 rounded-full" title="Notify"><i class="fas fa-bell"></i></button>
                             <button onclick="deleteShipment('${pkg.trackingNumber}')" class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-full"><i class="fas fa-trash"></i></button>
                         </td>
                     `;
@@ -2335,6 +2338,30 @@
                 btn.classList.add('hidden');
                 statusBtn.classList.add('hidden');
                 manifestBtn.classList.add('hidden');
+            }
+        }
+
+        async function sendSingleNotification(id) {
+            const email = prompt("Enter recipient email (optional):");
+            if (email === null) return; // Cancelled
+
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_BASE_URL}/api/shipment/${id}/notify`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ email })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showToast(data.message, "success");
+                } else {
+                    const err = await response.json();
+                    showToast(err.error || "Failed to send notification", "error");
+                }
+            } catch (e) {
+                showToast("Network error", "error");
             }
         }
 
@@ -2483,8 +2510,9 @@
 
             for (const id of idsToUpdate) {
                 try {
+                    const headers = await getAuthHeaders();
                     // Fetch current data first to preserve other fields
-                    const currentRes = await fetch(`${API_BASE_URL}/api/track/${id}`);
+                    const currentRes = await fetch(`${API_BASE_URL}/api/track/${id}`); // Public endpoint
                     const currentData = await currentRes.json();
 
                     const payload = {
@@ -2493,9 +2521,9 @@
                         statusText: newStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                     };
 
-                    await fetch(`${API_BASE_URL}/api/packages/${id}`, {
+                    await fetch(`${API_BASE_URL}/api/shipment/${id}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
                         body: JSON.stringify(payload)
                     });
                     updatedCount++;
@@ -2657,6 +2685,8 @@
 
             const recipientEmail = prompt("Enter recipient email address for notifications:");
             if (!recipientEmail) return;
+
+            if (!confirm(`Send status update for ${selectedShipments.size} shipments to ${recipientEmail}?`)) return;
 
             const ids = Array.from(selectedShipments);
             showToast(`Sending notifications for ${ids.length} shipments...`);
@@ -3336,7 +3366,8 @@
             const tbody = document.getElementById('adminLocationsTableBody');
             tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
             
-            const response = await fetch(`${API_BASE_URL}/api/locations`);
+            const headers = await getAuthHeaders();
+            const response = await fetch(`${API_BASE_URL}/api/locations`, { headers });
             locationsData = await response.json();
             
             tbody.innerHTML = '';
@@ -3388,17 +3419,18 @@
 
             const payload = { name, address, type };
             let response;
+            const headers = await getAuthHeaders();
             
             if(id) {
                 response = await fetch(`${API_BASE_URL}/api/locations/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
             } else {
                 response = await fetch(`${API_BASE_URL}/api/locations`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
             }
@@ -3412,7 +3444,8 @@
 
         async function deleteLocation(id) {
             if(confirm(`Delete location ${id}?`)) {
-                await fetch(`${API_BASE_URL}/api/locations/${id}`, { method: 'DELETE' });
+                const headers = await getAuthHeaders();
+                await fetch(`${API_BASE_URL}/api/locations/${id}`, { method: 'DELETE', headers: headers });
                 renderLocationsTable();
                 showToast("Location deleted.");
             }
@@ -3421,7 +3454,8 @@
         // --- SETTINGS ---
         async function renderSettings() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/settings`);
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_BASE_URL}/api/settings`, { headers });
                 settingsData = await response.json();
                 
                 document.getElementById('setting-maintenance').checked = settingsData.maintenance;
@@ -3463,9 +3497,10 @@
             };
             
             try {
+                const headers = await getAuthHeaders();
                 await fetch(`${API_BASE_URL}/api/settings`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
                 showToast("System settings updated.");
@@ -3484,7 +3519,8 @@
             tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Loading...</td></tr>';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/audit-logs`);
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_BASE_URL}/api/audit-logs`, { headers });
                 auditLogsData = await response.json();
                 filterAndSortAuditLogs();
             } catch (e) {
@@ -3541,7 +3577,8 @@
         async function clearAuditLogs() {
             if(confirm("Are you sure you want to clear all audit logs? This cannot be undone.")) {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/audit-logs`, { method: 'DELETE' });
+                    const headers = await getAuthHeaders();
+                    const response = await fetch(`${API_BASE_URL}/api/audit-logs`, { method: 'DELETE', headers: headers });
                     if (response.ok) {
                         showToast("Audit logs cleared.");
                         renderAuditLogsTable();
