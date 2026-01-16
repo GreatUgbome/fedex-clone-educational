@@ -2211,6 +2211,10 @@
             try {
                 const headers = await getAuthHeaders();
                 const response = await fetch(`${API_BASE_URL}/api/packages`, { headers });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || `Server returned ${response.status}`);
+                }
                 allShipmentsData = await response.json();
                 
                 tbody.innerHTML = '';
@@ -2283,7 +2287,7 @@
                 document.getElementById('shipmentNextBtn').disabled = currentShipmentPage === totalPages;
 
             } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Failed to load shipments</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Failed to load shipments: ${e.message}</td></tr>`;
             }
         }
 

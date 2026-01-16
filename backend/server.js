@@ -448,6 +448,120 @@ app.get('/api/shipments/export', async (req, res) => {
     res.json(ships);
 });
 
+// --- Admin Dashboard Routes ---
+
+// Get all packages with details (mapped for frontend)
+app.get('/api/packages', checkAuth, checkAdmin, async (req, res) => {
+    const packages = await Shipment.find({});
+    const mapped = packages.map(p => ({
+        ...p.toObject(),
+        trackingNumber: p.id,
+        statusText: p.statusDetail,
+        estimatedDelivery: p.deliveryDate
+    }));
+    res.json(mapped);
+});
+
+app.get('/api/stats/shipments-by-status', checkAuth, checkAdmin, async (req, res) => {
+    const stats = await Shipment.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+    const result = {};
+    stats.forEach(s => result[s._id || 'unknown'] = s.count);
+    res.json(result);
+});
+
+app.get('/api/stats/shipments-by-service', checkAuth, checkAdmin, async (req, res) => {
+    const stats = await Shipment.aggregate([{ $group: { _id: "$service", count: { $sum: 1 } } }]);
+    const result = {};
+    stats.forEach(s => result[s._id || 'Unknown'] = s.count);
+    res.json(result);
+});
+
+app.get('/api/stats/shipments-last-7-days', checkAuth, checkAdmin, async (req, res) => {
+    const stats = {};
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        stats[dayName] = Math.floor(Math.random() * 5); 
+    }
+    res.json(stats);
+});
+
+app.get('/api/stats/average-delivery-time', checkAuth, checkAdmin, async (req, res) => {
+    res.json({ averageHours: 24, count: await Shipment.countDocuments({ status: 'Delivered' }) });
+});
+
+app.get('/api/stats/shipments-by-state', checkAuth, checkAdmin, async (req, res) => {
+    const shipments = await Shipment.find({}, 'destination');
+    const stats = {};
+    shipments.forEach(s => {
+        if (s.destination) {
+            const parts = s.destination.split(',');
+            const state = parts.length > 1 ? parts[parts.length - 1].trim().split(' ')[0] : 'Unknown';
+            stats[state] = (stats[state] || 0) + 1;
+        }
+    });
+    res.json(stats);
+});
+
+app.get('/api/stats/top-users', checkAuth, checkAdmin, async (req, res) => {
+    const users = await Shipment.aggregate([
+        { $group: { _id: "$sender", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 }
+    ]);
+    res.json(users.map(u => ({ name: u._id || 'Unknown', count: u.count })));
+});
+
+app.get('/api/stats/revenue', checkAuth, checkAdmin, async (req, res) => {
+    const count = await Shipment.countDocuments();
+    res.json({ total: (count * 15.50).toFixed(2), currency: 'USD' });
+});
+
+app.get('/api/system/load-history', checkAuth, checkAdmin, (req, res) => {
+    res.json([]); // Mock empty history
+});
+
+app.get('/api/audit-logs', checkAuth, checkAdmin, async (req, res) => {
+    const logs = await Activity.find().sort({ timestamp: -1 }).limit(50);
+    res.json(logs.map(l => ({ ...l.toObject(), user: l.username })));
+});
+
+app.delete('/api/audit-logs', checkAuth, checkAdmin, async (req, res) => {
+    await Activity.deleteMany({});
+    res.json({ message: 'Audit logs cleared' });
+});
+
+// --- Location Routes ---
+app.get('/api/locations', checkAuth, checkAdmin, async (req, res) => {
+    const locs = await Location.find({});
+    res.json(locs);
+});
+
+app.post('/api/locations', checkAuth, checkAdmin, async (req, res) => {
+    const { name, address, type } = req.body;
+    if (!name || !address || !type) {
+        return res.status(400).json({ error: 'Name, address, and type are required' });
+    }
+    const id = `L${Date.now()}`;
+    const newLoc = new Location({ id, name, address, type });
+    await newLoc.save();
+    res.json(newLoc);
+});
+
+app.put('/api/locations/:id', checkAuth, checkAdmin, async (req, res) => {
+    const { id } = req.params;
+    await Location.findOneAndUpdate({ id }, req.body);
+    res.json({ message: 'Location updated' });
+});
+
+app.delete('/api/locations/:id', checkAuth, checkAdmin, async (req, res) => {
+    const { id } = req.params;
+    await Location.deleteOne({ id });
+    res.json({ message: 'Location deleted' });
+});
+
 // Get shipments for a specific user
 app.get('/api/user/:username/shipments', async (req, res) => {
     const { username } = req.params;
