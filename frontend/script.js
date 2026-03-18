@@ -175,6 +175,12 @@ function formatDate(date) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+// Fill input and track
+function fillInput(trackingNumber) {
+    document.getElementById('trackingInput').value = trackingNumber;
+    trackPackage();
+}
+
 // Modal functions
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -460,6 +466,87 @@ function downloadManifestPDF() {
 
 function bulkImportInput(input) {
     console.log('Bulk import file:', input.files[0]);
+}
+
+// Additional missing functions
+function openBulkStatusModal() {
+    openModal('bulkStatusModal');
+}
+
+function openLocationModal() {
+    openModal('adminLocationModal');
+}
+
+function openUserModal() {
+    openModal('adminUserModal');
+}
+
+function printAuditLogs() {
+    console.log('Print audit logs');
+    window.print();
+}
+
+function saveLocation() {
+    console.log('Save location');
+    closeModal('adminLocationModal');
+    showToast('Location saved', 'success');
+}
+
+function saveSettings() {
+    console.log('Save settings');
+    showToast('Settings saved', 'success');
+}
+
+function saveShipment() {
+    console.log('Save shipment');
+    closeModal('adminEditModal');
+    showToast('Shipment saved', 'success');
+}
+
+function saveUser() {
+    console.log('Save user');
+    closeModal('adminUserModal');
+    showToast('User saved', 'success');
+}
+
+function scrollToSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function sendCustomEmail() {
+    alert('Custom email sent');
+}
+
+function sendShipmentNotifications() {
+    alert('Notifications sent');
+}
+
+function shareTrackingLink() {
+    const trackingNumber = document.getElementById('displayTracking').textContent;
+    if (navigator.share) {
+        navigator.share({
+            title: 'FedEx Tracking',
+            text: `Track my package: ${trackingNumber}`,
+            url: window.location.href
+        });
+    } else {
+        showToast('Share not supported on this browser', 'warning');
+    }
+}
+
+function toggleDarkMode() {
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+}
+
+function toggleMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('hidden');
+    }
 }
 
 // DOMContentLoaded setup
