@@ -1,338 +1,297 @@
+// Auth API endpoint
+const AUTH_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+    ? 'http://localhost:5002/api' 
+    : 'https://us-central1-fedex-37e89.cloudfunctions.net/api';
 
-const AUTH_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5002/api' : 'https://fedex-clone-educational.onrender.com/api';
-let authMode = 'login'; // 'login' or 'signup'
+console.log('Auth API:', AUTH_API);
 
-document.addEventListener('DOMContentLoaded', () => {
-    checkLoginState();
-    checkResetToken();
-    checkVerificationToken();
-});
-
-function checkLoginState() {
-    const authButtons = document.getElementById('authButtons');
-    const userStr = localStorage.getItem('fedexUser') || sessionStorage.getItem('fedexUser');
-
-    if (userStr) {
-        const user = JSON.parse(userStr);
-        authButtons.innerHTML = `
-            <span class="text-sm font-medium">Hello, ${user.username}</span>
-            <button onclick="openProfileModal()" class="text-sm font-medium hover:text-gray-200 ml-4">Profile</button>
-            <button onclick="openUserDashboard()" class="text-sm font-medium hover:text-gray-200 ml-4">Dashboard</button>
-            <button onclick="logout()" class="text-sm font-medium hover:text-gray-200 ml-4">Log Out</button>
-        `;
-    } else {
-        authButtons.innerHTML = `
-            <button onclick="openAuthModal('signup')" class="text-sm font-medium hover:text-gray-200">Sign Up</button>
-            <button onclick="openAuthModal('login')" class="text-sm font-medium hover:text-gray-200 ml-4">Log In</button>
-        `;
-    }
-}
-
-function logout() {
-    localStorage.removeItem('fedexUser');
-    sessionStorage.removeItem('fedexUser');
-    window.location.reload();
-}
-
-function openAuthModal(mode) {
-    authMode = mode;
-    document.getElementById('authModal').classList.remove('hidden');
-    updateAuthUI();
-}
-
-function closeAuthModal() {
-    document.getElementById('authModal').classList.add('hidden');
-}
-
-function toggleAuthMode() {
-    authMode = authMode === 'login' ? 'signup' : 'login';
-    updateAuthUI();
-}
-
-function updateAuthUI() {
-    const title = document.getElementById('authTitle');
-    const switchText = document.getElementById('authSwitchText');
-    const switchBtn = document.getElementById('authSwitchBtn');
-    const rememberMeContainer = document.getElementById('rememberMeContainer');
-    const termsContainer = document.getElementById('termsContainer');
-    const forgotPasswordContainer = document.getElementById('forgotPasswordContainer');
-    const emailContainer = document.getElementById('emailContainer');
-
-    if (authMode === 'login') {
-        title.textContent = 'Log In';
-        switchText.textContent = "Don't have an account?";
-        switchBtn.textContent = 'Sign Up';
-        rememberMeContainer.classList.remove('hidden');
-        termsContainer.classList.add('hidden');
-        forgotPasswordContainer.classList.remove('hidden');
-        emailContainer.classList.add('hidden');
-    } else {
-        title.textContent = 'Sign Up';
-        switchText.textContent = "Already have an account?";
-        switchBtn.textContent = 'Log In';
-        rememberMeContainer.classList.add('hidden');
-        termsContainer.classList.remove('hidden');
-        forgotPasswordContainer.classList.add('hidden');
-        emailContainer.classList.remove('hidden');
-    }
-}
-
-async function submitAuth() {
-    const username = document.getElementById('authUsername').value;
-    const password = document.getElementById('authPassword').value;
-    const email = document.getElementById('authEmail').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
-    const termsAccepted = document.getElementById('termsCheckbox').checked;
-    const endpoint = authMode === 'login' ? '/login' : '/signup';
-
-    if (!username || !password) {
-        return showToast("Username and password are required", "error");
-    }
-
-    if (authMode === 'signup' && !termsAccepted) {
-        return showToast("You must agree to the Terms & Conditions", "error");
-    }
-    
-    if (authMode === 'signup' && !email) {
-        return showToast("Email is required for signup", "error");
-    }
-
-    let data;
-    try {
-        const res = await fetch(`${AUTH_API}${endpoint}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, email })
-        });
-        data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Request failed');
-    } catch (e) {
-        return showToast(e.message || "Connection error", "error");
-    }
-
-    if (data) {
-        if (authMode === 'signup') {
-            showToast(data.message, 'success');
-            closeAuthModal();
-            return;
-        }
-
-        // Handle Remember Me
-        if (rememberMe) {
-            localStorage.setItem('fedexUser', JSON.stringify(data));
-        } else {
-            sessionStorage.setItem('fedexUser', JSON.stringify(data));
-        }
-
-        closeAuthModal();
-        checkLoginState();
-        if (data.role === 'admin') {
-            showToast("Welcome Admin! Access panel in footer.", 'success');
-        }
-    }
-}
-
-// --- Forgot Password Logic ---
-
-function checkResetToken() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('resetToken');
-    if (token) {
-        document.getElementById('resetTokenInput').value = token;
-        document.getElementById('resetPasswordModal').classList.remove('hidden');
-        // Clean URL
-        window.history.replaceState({}, document.title, "/");
-    }
-}
-
-async function checkVerificationToken() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('verifyToken');
-    if (token) {
+// Helper to get auth headers
+async function getAuthHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (window.firebaseAuth && window.firebaseAuth.auth && window.firebaseAuth.auth.currentUser) {
         try {
-            const res = await fetch(`${AUTH_API}/verify-email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                showToast(data.message, 'success');
-                if (data.user) {
-                    localStorage.setItem('fedexUser', JSON.stringify(data.user));
-                    checkLoginState();
-                    if (typeof openUserDashboard === 'function') {
-                        openUserDashboard();
-                    }
-                }
-            } else {
-                showToast(data.error, 'error');
-            }
+            const token = await window.firebaseAuth.auth.currentUser.getIdToken(true);
+            headers['Authorization'] = `Bearer ${token}`;
         } catch (e) {
-            showToast("Verification failed: Connection error", 'error');
+            console.error('Could not get auth token:', e);
         }
-        window.history.replaceState({}, document.title, "/");
     }
+    return headers;
 }
 
-function openForgotPasswordModal() {
-    closeAuthModal();
-    document.getElementById('forgotPasswordModal').classList.remove('hidden');
+// Open auth modal
+function openAuthModal() {
+    const modal = document.getElementById('loginModal');
+    if (modal) modal.style.display = 'block';
 }
 
-function closeForgotPasswordModal() {
-    document.getElementById('forgotPasswordModal').classList.add('hidden');
+// Close auth modal
+function closeAuthModal() {
+    const modal = document.getElementById('loginModal');
+    if (modal) modal.style.display = 'none';
 }
 
-async function submitForgotPassword() {
-    const email = document.getElementById('forgotEmail').value;
-    if (!email) return showToast("Please enter your email", "error");
-
-    try {
-        const res = await fetch(`${AUTH_API}/forgot-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            showToast(data.message, "success");
-            closeForgotPasswordModal();
-        } else {
-            showToast(data.error, "error");
-        }
-    } catch (e) {
-        showToast("Network error", "error");
-    }
+// Open profile modal
+function openProfileModal() {
+    const modal = document.getElementById('profileModal');
+    if (modal) modal.style.display = 'block';
 }
 
-function openResendVerificationModal() {
-    closeAuthModal();
-    document.getElementById('resendVerificationModal').classList.remove('hidden');
-}
-
-function closeResendVerificationModal() {
-    document.getElementById('resendVerificationModal').classList.add('hidden');
-}
-
-async function submitResendVerification() {
-    const email = document.getElementById('resendVerifyEmail').value;
-    if (!email) return showToast("Please enter your email", "error");
-
-    try {
-        const res = await fetch(`${AUTH_API}/resend-verification`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            showToast(data.message, "success");
-            closeResendVerificationModal();
-        } else {
-            showToast(data.error, "error");
-        }
-    } catch (e) {
-        showToast("Network error", "error");
-    }
-}
-
-async function deleteProfile() {
-    const userStr = localStorage.getItem('fedexUser') || sessionStorage.getItem('fedexUser');
-    if (!userStr) return;
-    const currentUser = JSON.parse(userStr);
-
-    if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
-
-    try {
-        const res = await fetch(`${AUTH_API}/profile/${currentUser.username}`, {
-            method: 'DELETE'
-        });
-        if (res.ok) {
-            showToast("Account deleted successfully", "success");
-            logout();
-        } else {
-            const data = await res.json();
-            showToast(data.error || "Failed to delete account", "error");
-        }
-    } catch (e) {
-        showToast("Network error", "error");
-    }
-}
-
-// --- Profile Logic ---
-
-async function openProfileModal() {
-    const userStr = localStorage.getItem('fedexUser') || sessionStorage.getItem('fedexUser');
-    if (!userStr) return;
-    const user = JSON.parse(userStr);
-
-    // Fetch latest data
-    try {
-        const res = await fetch(`${AUTH_API}/profile/${user.username}`);
-        const profile = await res.json();
-        
-        document.getElementById('profileUsername').value = profile.username;
-        document.getElementById('profileEmail').value = profile.email || '';
-        document.getElementById('profilePassword').value = '';
-        document.getElementById('profileModal').classList.remove('hidden');
-    } catch (e) {
-        showToast("Error loading profile", "error");
-    }
-}
-
+// Close profile modal
 function closeProfileModal() {
-    document.getElementById('profileModal').classList.add('hidden');
+    const modal = document.getElementById('profileModal');
+    if (modal) modal.style.display = 'none';
 }
 
-async function saveProfile() {
-    const userStr = localStorage.getItem('fedexUser') || sessionStorage.getItem('fedexUser');
-    const currentUser = JSON.parse(userStr);
+// Submit auth (login/signup)
+async function submitAuth(e) {
+    if (e) e.preventDefault();
     
-    const newUsername = document.getElementById('profileUsername').value;
-    const email = document.getElementById('profileEmail').value;
-    const password = document.getElementById('profilePassword').value;
+    const email = document.getElementById('authEmail')?.value;
+    const password = document.getElementById('authPassword')?.value;
+    const isSignup = document.getElementById('signupForm')?.style.display !== 'none';
 
-    try {
-        const res = await fetch(`${AUTH_API}/profile/${currentUser.username}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ newUsername, email, password })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            showToast(data.message, "success");
-            const storage = localStorage.getItem('fedexUser') ? localStorage : sessionStorage;
-            storage.setItem('fedexUser', JSON.stringify(data.user));
-            closeProfileModal();
-            checkLoginState();
-        } else {
-            showToast(data.error, "error");
-        }
-    } catch (e) {
-        showToast("Network error", "error");
+    if (!email || !password) {
+        showAuthError('Please enter email and password');
+        return;
     }
-}
-
-async function submitResetPassword() {
-    const token = document.getElementById('resetTokenInput').value;
-    const newPassword = document.getElementById('newResetPassword').value;
 
     try {
-        const res = await fetch(`${AUTH_API}/reset-password`, {
+        const url = isSignup ? `${AUTH_API}/auth/register` : `${AUTH_API}/auth/login`;
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, newPassword })
+            body: JSON.stringify({ email, password })
         });
-        const data = await res.json();
-        if (res.ok) {
-            showToast(data.message, "success");
-            document.getElementById('resetPasswordModal').classList.add('hidden');
-            openAuthModal('login');
-        } else {
-            showToast(data.error, "error");
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Auth failed');
         }
-    } catch (e) {
-        showToast("Network error", "error");
+
+        const data = await response.json();
+        localStorage.setItem('authToken', data.token);
+        closeAuthModal();
+        updateUIAfterAuth();
+        
+    } catch (error) {
+        console.error('Auth error:', error);
+        showAuthError(error.message || 'Authentication failed');
     }
 }
+
+// Submit forgot password
+async function submitForgotPassword(e) {
+    if (e) e.preventDefault();
+    
+    const email = document.getElementById('forgotEmail')?.value;
+    if (!email) {
+        showAuthError('Please enter your email');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${AUTH_API}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+
+        if (!response.ok) {
+            throw new Error('Could not send reset email');
+        }
+
+        showAuthSuccess('Password reset link sent to your email');
+        setTimeout(() => closeAuthModal(), 2000);
+        
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        showAuthError(error.message);
+    }
+}
+
+// Toggle auth mode (login vs signup)
+function toggleAuthMode() {
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const forgotForm = document.getElementById('forgotForm');
+    
+    if (!loginForm || !signupForm) return;
+
+    const isLogin = loginForm.style.display !== 'none';
+    loginForm.style.display = isLogin ? 'none' : 'block';
+    signupForm.style.display = isLogin ? 'block' : 'none';
+    if (forgotForm) forgotForm.style.display = 'none';
+}
+
+// Show forgot password form
+function showForgotPasswordForm() {
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const forgotForm = document.getElementById('forgotForm');
+    
+    if (loginForm) loginForm.style.display = 'none';
+    if (signupForm) signupForm.style.display = 'none';
+    if (forgotForm) forgotForm.style.display = 'block';
+}
+
+// Back to login
+function backToLogin() {
+    const loginForm = document.getElementById('loginForm');
+    const forgotForm = document.getElementById('forgotForm');
+    
+    if (loginForm) loginForm.style.display = 'block';
+    if (forgotForm) forgotForm.style.display = 'none';
+}
+
+// Delete profile
+async function deleteProfile() {
+    if (!confirm('Are you sure you want to delete your profile? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${AUTH_API}/auth/profile`, {
+            method: 'DELETE',
+            headers: await getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            throw new Error('Could not delete profile');
+        }
+
+        localStorage.removeItem('authToken');
+        closeProfileModal();
+        updateUIAfterLogout();
+        showAuthSuccess('Profile deleted');
+        
+    } catch (error) {
+        console.error('Delete profile error:', error);
+        showAuthError(error.message);
+    }
+}
+
+// Update profile
+async function updateProfile(e) {
+    if (e) e.preventDefault();
+
+    try {
+        const response = await fetch(`${AUTH_API}/auth/profile`, {
+            method: 'PUT',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify(getProfileFormData())
+        });
+
+        if (!response.ok) {
+            throw new Error('Could not update profile');
+        }
+
+        showAuthSuccess('Profile updated');
+        closeProfileModal();
+        
+    } catch (error) {
+        console.error('Update profile error:', error);
+        showAuthError(error.message);
+    }
+}
+
+// Get profile form data
+function getProfileFormData() {
+    return {
+        firstName: document.getElementById('profileFirstName')?.value || '',
+        lastName: document.getElementById('profileLastName')?.value || '',
+        phone: document.getElementById('profilePhone')?.value || '',
+        address: document.getElementById('profileAddress')?.value || ''
+    };
+}
+
+// Logout
+function handleLogout() {
+    localStorage.removeItem('authToken');
+    updateUIAfterLogout();
+    showAuthSuccess('Logged out');
+}
+
+// Update UI after auth
+function updateUIAfterAuth() {
+    const authBtn = document.getElementById('authButton');
+    const profileBtn = document.getElementById('profileButton');
+    
+    if (authBtn) {
+        authBtn.textContent = 'Logout';
+        authBtn.onclick = handleLogout;
+    }
+    if (profileBtn) profileBtn.style.display = 'block';
+}
+
+// Update UI after logout
+function updateUIAfterLogout() {
+    const authBtn = document.getElementById('authButton');
+    const profileBtn = document.getElementById('profileButton');
+    
+    if (authBtn) {
+        authBtn.textContent = 'Login';
+        authBtn.onclick = openAuthModal;
+    }
+    if (profileBtn) profileBtn.style.display = 'none';
+}
+
+// Show auth error
+function showAuthError(message) {
+    const errorEl = document.getElementById('authError');
+    if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+    }
+    console.error('Auth error:', message);
+}
+
+// Show auth success
+function showAuthSuccess(message) {
+    const successEl = document.getElementById('authSuccess');
+    if (successEl) {
+        successEl.textContent = message;
+        successEl.style.display = 'block';
+        setTimeout(() => {
+            successEl.style.display = 'none';
+        }, 3000);
+    }
+    console.log('Auth success:', message);
+}
+
+// Google login (stub)
+function handleGoogleLogin() {
+    console.log('Google login not fully configured yet');
+    showAuthError('Google login not available');
+}
+
+// DOMContentLoaded setup
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Auth module loaded');
+    
+    // Check if user is logged in
+    const token = localStorage.getItem('authToken');
+    if (token) {
+        updateUIAfterAuth();
+    }
+
+    // Setup form submissions
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const forgotForm = document.getElementById('forgotForm');
+    const profileForm = document.getElementById('profileForm');
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', submitAuth);
+    }
+    if (signupForm) {
+        signupForm.addEventListener('submit', submitAuth);
+    }
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', submitForgotPassword);
+    }
+    if (profileForm) {
+        profileForm.addEventListener('submit', updateProfile);
+    }
+});

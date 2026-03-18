@@ -7,7 +7,20 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      { "source": "**", "destination": "/index.html" }
+      {
+        "source": "/api/**",
+        "function": "api"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
+  },
+  "functions": {
+    "source": "backend",
+    "runtime": "nodejs20",
+    "timeoutSeconds": 60,
+    "memory": "256MB"
   }
 }
