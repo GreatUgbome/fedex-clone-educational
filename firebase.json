@@ -19,8 +19,14 @@
   },
   "functions": {
     "source": "backend",
-    "runtime": "nodejs20",
-    "timeoutSeconds": 60,
-    "memory": "256MB"
+    "runtime": "nodejs20"
+  },
+  "emulators": {
+    "dataconnect": {
+      "dataDir": "dataconnect/.dataconnect/pgliteData"
+    }
+  },
+  "dataconnect": {
+    "source": "dataconnect"
   }
 }
