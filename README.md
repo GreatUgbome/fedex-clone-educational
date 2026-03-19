@@ -1,6 +1,6 @@
 # FedEx Clone - Educational Shipping & Tracking Application
 
-> � **[FIREBASE DEPLOYMENT](./FIREBASE_QUICK_START.md)** - Deploy in 10 minutes!
+> 🚀 **[FIREBASE DEPLOYMENT](./FIREBASE_QUICK_START.md)** - Deploy in 10 minutes!
 > 
 > 👉 **[START_HERE.md](./START_HERE.md)** - Quick overview
 
@@ -209,5 +209,3 @@ Educational Use Only
 Or **[Open START_HERE.md](./START_HERE.md)** for an overview first.
 
 Happy shipping! 📦✈️
-
-
