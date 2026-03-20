@@ -1,0 +1,940 @@
+extend type DeliveryJob {
+  """
+  ✨ List `LocationHistory` objects in a one-to-many relationship (where `LocationHistory`.`deliveryJob` is this object).
+  """
+  locationHistories_on_deliveryJob(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: LocationHistory_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [LocationHistory_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: LocationHistory_Having
+  ): [LocationHistory!]! @fdc_generated(from: "LocationHistory.deliveryJob", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Review` objects in a one-to-many relationship (where `Review`.`deliveryJob` is this object).
+  """
+  reviews_on_deliveryJob(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Review_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Review_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Review_Having
+  ): [Review!]! @fdc_generated(from: "Review.deliveryJob", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "DeliveryJob", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table.
+  """
+  _count: Int! @fdc_generated(from: "DeliveryJob.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `actualDeliveryTime` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  actualDeliveryTime_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.actualDeliveryTime", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `assignedAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  assignedAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.assignedAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `courierId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  courierId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.courierId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `deliveryTime` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  deliveryTime_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.deliveryTime", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `finalCost` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  finalCost_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.finalCost", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `packageId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  packageId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.packageId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `pickupTime` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  pickupTime_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.pickupTime", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DeliveryJob` table where the `status` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  status_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DeliveryJob.status", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `finalCost` field in the `DeliveryJob` table.
+  """
+  finalCost_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "DeliveryJob.finalCost", purpose: QUERY_SUM)
+  """
+  ✨ Average the `finalCost` field in the `DeliveryJob` table.
+  """
+  finalCost_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "DeliveryJob.finalCost", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `actualDeliveryTime` field in the `DeliveryJob` table.
+  """
+  actualDeliveryTime_min: Timestamp @fdc_generated(from: "DeliveryJob.actualDeliveryTime", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `assignedAt` field in the `DeliveryJob` table.
+  """
+  assignedAt_min: Timestamp @fdc_generated(from: "DeliveryJob.assignedAt", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `deliveryTime` field in the `DeliveryJob` table.
+  """
+  deliveryTime_min: Timestamp @fdc_generated(from: "DeliveryJob.deliveryTime", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `finalCost` field in the `DeliveryJob` table.
+  """
+  finalCost_min: Float @fdc_generated(from: "DeliveryJob.finalCost", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `pickupTime` field in the `DeliveryJob` table.
+  """
+  pickupTime_min: Timestamp @fdc_generated(from: "DeliveryJob.pickupTime", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `actualDeliveryTime` field in the `DeliveryJob` table.
+  """
+  actualDeliveryTime_max: Timestamp @fdc_generated(from: "DeliveryJob.actualDeliveryTime", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `assignedAt` field in the `DeliveryJob` table.
+  """
+  assignedAt_max: Timestamp @fdc_generated(from: "DeliveryJob.assignedAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `deliveryTime` field in the `DeliveryJob` table.
+  """
+  deliveryTime_max: Timestamp @fdc_generated(from: "DeliveryJob.deliveryTime", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `finalCost` field in the `DeliveryJob` table.
+  """
+  finalCost_max: Float @fdc_generated(from: "DeliveryJob.finalCost", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `pickupTime` field in the `DeliveryJob` table.
+  """
+  pickupTime_max: Timestamp @fdc_generated(from: "DeliveryJob.pickupTime", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "DeliveryJob.id", purpose: GLOBAL_ID)
+}
+extend type LocationHistory {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "LocationHistory", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `LocationHistory` table.
+  """
+  _count: Int! @fdc_generated(from: "LocationHistory.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `LocationHistory` table where the `deliveryJobId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  deliveryJobId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "LocationHistory.deliveryJobId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `LocationHistory` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "LocationHistory.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `LocationHistory` table where the `latitude` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  latitude_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "LocationHistory.latitude", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `LocationHistory` table where the `longitude` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  longitude_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "LocationHistory.longitude", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `LocationHistory` table where the `statusUpdate` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  statusUpdate_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "LocationHistory.statusUpdate", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `LocationHistory` table where the `timestamp` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  timestamp_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "LocationHistory.timestamp", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `latitude` field in the `LocationHistory` table.
+  """
+  latitude_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "LocationHistory.latitude", purpose: QUERY_SUM)
+  """
+  ✨ Sum the `longitude` field in the `LocationHistory` table.
+  """
+  longitude_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "LocationHistory.longitude", purpose: QUERY_SUM)
+  """
+  ✨ Average the `latitude` field in the `LocationHistory` table.
+  """
+  latitude_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "LocationHistory.latitude", purpose: QUERY_AVG)
+  """
+  ✨ Average the `longitude` field in the `LocationHistory` table.
+  """
+  longitude_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "LocationHistory.longitude", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `latitude` field in the `LocationHistory` table.
+  """
+  latitude_min: Float @fdc_generated(from: "LocationHistory.latitude", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `longitude` field in the `LocationHistory` table.
+  """
+  longitude_min: Float @fdc_generated(from: "LocationHistory.longitude", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `timestamp` field in the `LocationHistory` table.
+  """
+  timestamp_min: Timestamp @fdc_generated(from: "LocationHistory.timestamp", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `latitude` field in the `LocationHistory` table.
+  """
+  latitude_max: Float @fdc_generated(from: "LocationHistory.latitude", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `longitude` field in the `LocationHistory` table.
+  """
+  longitude_max: Float @fdc_generated(from: "LocationHistory.longitude", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `timestamp` field in the `LocationHistory` table.
+  """
+  timestamp_max: Timestamp @fdc_generated(from: "LocationHistory.timestamp", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "LocationHistory.id", purpose: GLOBAL_ID)
+}
+extend type Package {
+  """
+  ✨ List `DeliveryJob` objects in a one-to-many relationship (where `DeliveryJob`.`package` is this object).
+  """
+  deliveryJobs_on_package(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DeliveryJob_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DeliveryJob_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DeliveryJob_Having
+  ): [DeliveryJob!]! @fdc_generated(from: "DeliveryJob.package", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Package", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Package` table.
+  """
+  _count: Int! @fdc_generated(from: "Package.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `deliveryAddress` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  deliveryAddress_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.deliveryAddress", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `description` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  description_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.description", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `dimensions` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  dimensions_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.dimensions", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `estimatedDeliveryTime` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  estimatedDeliveryTime_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.estimatedDeliveryTime", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `fragile` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  fragile_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.fragile", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `pickupAddress` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  pickupAddress_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.pickupAddress", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `recipientId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  recipientId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.recipientId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `senderId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  senderId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.senderId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `specialInstructions` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  specialInstructions_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.specialInstructions", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `status` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  status_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.status", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Package` table where the `weight` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  weight_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Package.weight", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `weight` field in the `Package` table.
+  """
+  weight_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Package.weight", purpose: QUERY_SUM)
+  """
+  ✨ Average the `weight` field in the `Package` table.
+  """
+  weight_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Package.weight", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `createdAt` field in the `Package` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Package.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `estimatedDeliveryTime` field in the `Package` table.
+  """
+  estimatedDeliveryTime_min: Timestamp @fdc_generated(from: "Package.estimatedDeliveryTime", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `weight` field in the `Package` table.
+  """
+  weight_min: Float @fdc_generated(from: "Package.weight", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Package` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Package.createdAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `estimatedDeliveryTime` field in the `Package` table.
+  """
+  estimatedDeliveryTime_max: Timestamp @fdc_generated(from: "Package.estimatedDeliveryTime", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `weight` field in the `Package` table.
+  """
+  weight_max: Float @fdc_generated(from: "Package.weight", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Package.id", purpose: GLOBAL_ID)
+}
+extend type Review {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Review", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Review` table.
+  """
+  _count: Int! @fdc_generated(from: "Review.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Review` table where the `comment` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  comment_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Review.comment", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Review` table where the `courierId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  courierId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Review.courierId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Review` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Review.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Review` table where the `customerId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  customerId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Review.customerId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Review` table where the `deliveryJobId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  deliveryJobId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Review.deliveryJobId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Review` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Review.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Review` table where the `rating` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  rating_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Review.rating", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `rating` field in the `Review` table.
+  """
+  rating_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Int @fdc_generated(from: "Review.rating", purpose: QUERY_SUM)
+  """
+  ✨ Average the `rating` field in the `Review` table.
+  """
+  rating_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Review.rating", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `createdAt` field in the `Review` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Review.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `rating` field in the `Review` table.
+  """
+  rating_min: Int @fdc_generated(from: "Review.rating", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Review` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Review.createdAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `rating` field in the `Review` table.
+  """
+  rating_max: Int @fdc_generated(from: "Review.rating", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Review.id", purpose: GLOBAL_ID)
+}
+extend type User {
+  """
+  ✨ List `DeliveryJob` objects in a one-to-many relationship (where `DeliveryJob`.`courier` is this object).
+  """
+  deliveryJobs_on_courier(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DeliveryJob_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DeliveryJob_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DeliveryJob_Having
+  ): [DeliveryJob!]! @fdc_generated(from: "DeliveryJob.courier", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Package` objects in a one-to-many relationship (where `Package`.`recipient` is this object).
+  """
+  packages_on_recipient(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Package_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Package_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Package_Having
+  ): [Package!]! @fdc_generated(from: "Package.recipient", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Package` objects in a one-to-many relationship (where `Package`.`sender` is this object).
+  """
+  packages_on_sender(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Package_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Package_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Package_Having
+  ): [Package!]! @fdc_generated(from: "Package.sender", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Review` objects in a one-to-many relationship (where `Review`.`courier` is this object).
+  """
+  reviews_on_courier(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Review_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Review_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Review_Having
+  ): [Review!]! @fdc_generated(from: "Review.courier", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Review` objects in a one-to-many relationship (where `Review`.`customer` is this object).
+  """
+  reviews_on_customer(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Review_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Review_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Review_Having
+  ): [Review!]! @fdc_generated(from: "Review.customer", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "User", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `User` table.
+  """
+  _count: Int! @fdc_generated(from: "User.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `address` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  address_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.address", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `displayName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  displayName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.displayName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `email` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  email_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.email", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `phoneNumber` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  phoneNumber_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.phoneNumber", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `photoUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  photoUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.photoUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `userType` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  userType_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.userType", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `vehicleDetails` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  vehicleDetails_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.vehicleDetails", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `User` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `User` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "User.id", purpose: GLOBAL_ID)
+}

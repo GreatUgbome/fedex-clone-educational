@@ -6,7 +6,7 @@ const { logActivity } = require('../utils/activity');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-const BASE_URL = process.env.BASE_URL || (process.env.RENDER ? 'https://fedex-37e89.web.app' : `http://localhost:5002}`);
+const BASE_URL = process.env.BASE_URL || (process.env.RENDER ? 'https://fedex-37e89.web.app' : `http://localhost:5002`);
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -41,9 +41,22 @@ const signup = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     const { username, password, email } = req.body;
-    const existing = await User.findOne({ username });
-    if (existing) {
-        return res.status(400).json({ error: 'User already exists' });
+    
+    // Check if username already exists
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+        return res.status(400).json({ error: 'Username already exists' });
+    }
+    
+    // Check if email already exists
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+        return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Require strong passwords
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])(?=.{8,})/.test(password)) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters and contain uppercase, lowercase, numbers, and special characters.' });
     }
     
     const verificationToken = crypto.randomBytes(20).toString('hex');
@@ -56,11 +69,11 @@ const signup = async (req, res) => {
     // Send Verification Email
     const verifyLink = `${BASE_URL}/?verifyToken=${verificationToken}`;
     const mailOptions = {
-        from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+        from: '"Shipping App Support" <support@demo.local>',
         to: email,
         subject: 'Welcome! Please Verify Your Email',
         html: generateEmailTemplate(
-            'Welcome to FedEx CL!',
+            'Welcome to our Shipping App!',
             'Thank you for signing up. To start shipping and tracking packages, please verify your email address.',
             'Verify Email Address',
             verifyLink
@@ -71,8 +84,15 @@ const signup = async (req, res) => {
         if (err) console.log('Email error:', err);
     });
 
-    // Do not auto-login, require verification
-    res.json({ message: 'Signup successful! Please check your email to verify your account.' });
+    // Generate JWT-like token for signup response (simple base64 encoding of username+timestamp)
+    const signupToken = Buffer.from(`${username}:${Date.now()}`).toString('base64');
+    
+    // Require verification before login, but provide feedback token for frontend use
+    res.json({ 
+        message: 'Signup successful! Please check your email to verify your account.',
+        token: signupToken,
+        requiresVerification: true
+    });
 };
 
 const forgotPassword = async (req, res) => {
@@ -94,7 +114,7 @@ const forgotPassword = async (req, res) => {
     const resetLink = `${BASE_URL}/?resetToken=${token}`;
     
     const mailOptions = {
-        from: '"FedEx Support" <fedex-cl@noreply.com>',
+        from: '"Shipping App Support" <support@demo.local>',
         to: user.email,
         subject: 'Password Reset Request',
         html: generateEmailTemplate(
@@ -121,6 +141,11 @@ const resetPassword = async (req, res) => {
     const user = await User.findOne({ resetToken: token, resetTokenExpiry: { $gt: Date.now() } });
 
     if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
+
+    // Require strong passwords
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])(?=.{8,})/.test(newPassword)) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters and contain uppercase, lowercase, numbers, and special characters.' });
+    }
 
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetToken = undefined;
@@ -165,7 +190,7 @@ const resendVerification = async (req, res) => {
 
     const verifyLink = `${BASE_URL}/?verifyToken=${verificationToken}`;
     const mailOptions = {
-        from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+        from: '"Shipping App Support" <support@demo.local>',
         to: email,
         subject: 'Verify Your Email Address',
         html: generateEmailTemplate(

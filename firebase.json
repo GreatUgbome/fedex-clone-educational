@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "fedex-37e89",
     "public": "frontend",
     "ignore": [
       "firebase.json",

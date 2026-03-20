@@ -1,0 +1,50 @@
+query AllPackages @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  packages {
+    id
+    description
+    status
+    pickupAddress
+    deliveryAddress
+    sender {
+      id
+      displayName
+    }
+    recipient {
+      id
+      displayName
+    }
+  }
+}
+
+query MyDeliveryJobs @auth(level: USER) {
+  deliveryJobs(where: {courier: {id: "auth.uid"}}) {
+    id
+    status
+    package {
+      id
+      description
+      deliveryAddress
+    }
+    assignedAt
+    pickupTime
+  }
+}
+
+mutation CreateReview($deliveryJobId: UUID!, $rating: Int!, $comment: String) @auth(level: USER) {
+  review_insert(data: {
+    deliveryJob: {id: $deliveryJobId},
+    customer: {id_expr: "auth.uid"},
+    rating: $rating,
+    comment: $comment,
+    createdAt_expr: "request.time"
+  })
+}
+
+mutation UpdatePackageStatus($packageId: UUID!, $newStatus: String!) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users. The update targets a specific package via ID.") {
+  package_update(
+    id: $packageId,
+    data: {
+      status: $newStatus
+    }
+  )
+}

@@ -1,27 +1,38 @@
 const admin = require('firebase-admin');
 
 const checkAuth = async (req, res, next) => {
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-        const idToken = req.headers.authorization.split('Bearer ')[1];
-        try {
-            const decodedToken = await admin.auth().verifyIdToken(idToken);
-            req.user = decodedToken; // Attach user info to the request
-            return next();
-        } catch (error) {
-            console.error('Error while verifying Firebase ID token:', error);
-            return res.status(403).json({ error: 'Unauthorized' });
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
         }
+
+        const token = authHeader.split(' ')[1];
+        
+        // Verify the token with Firebase Admin
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        
+        // Attach the decoded token (which includes .email and .uid) to req.user
+        req.user = decodedToken;
+        next();
+    } catch (error) {
+        console.error('Authentication Error:', error.message);
+        return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
     }
-    return res.status(401).json({ error: 'No token provided' });
 };
 
-// TODO: Replace this with a proper Role-Based Access Control (RBAC) system.
-const checkAdmin = (req, res, next) => {
-    if (req.user && req.user.email === 'admin@fedex.com') return next();
-    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+const checkAdmin = async (req, res, next) => {
+    // If they aren't authenticated at all, reject immediately
+    if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Rely solely on Firebase Custom Claims
+    if (req.user.admin === true) {
+        next();
+    } else {
+        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
 };
 
-module.exports = {
-    checkAuth,
-    checkAdmin
-};
+module.exports = { checkAuth, checkAdmin };

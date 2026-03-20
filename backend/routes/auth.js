@@ -11,7 +11,7 @@ router.post('/login',
 router.post('/signup',
     body('username').isLength({ min: 3 }).withMessage('Username must be at least 3 characters long'),
     body('email').isEmail().withMessage('Please provide a valid email address'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
     signup
 );
 router.post('/forgot-password',
@@ -20,7 +20,7 @@ router.post('/forgot-password',
 );
 router.post('/reset-password',
     body('token').notEmpty().withMessage('Token is required'),
-    body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+    body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
     resetPassword
 );
 router.post('/verify-email',

@@ -26,11 +26,12 @@ const {
     deleteEmail,
     saveDraft
 } = require('../controllers/admin');
+const { exportAuditLogsToCSV } = require('../controllers/audit');
 const { checkAuth, checkAdmin } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { body, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 
 // --- File Upload Setup (Multer) ---
 // Use disk storage for Render/Local
@@ -54,6 +55,7 @@ router.get('/stats/top-users', checkAuth, checkAdmin, getTopUsers);
 router.get('/stats/revenue', checkAuth, checkAdmin, getRevenue);
 router.get('/system/load-history', checkAuth, checkAdmin, getSystemLoadHistory);
 router.get('/audit-logs', checkAuth, checkAdmin, getAuditLogs);
+router.get('/audit-logs/export', checkAuth, checkAdmin, exportAuditLogsToCSV);
 router.delete('/audit-logs', checkAuth, checkAdmin, clearAuditLogs);
 router.get('/locations', checkAuth, checkAdmin, getLocations);
 router.post('/locations',
@@ -108,12 +110,17 @@ router.post('/admin/send-bulk-email',
     sendBulkEmail
 );
 router.get('/admin/emails', checkAuth, checkAdmin, getEmails);
-router.delete('/api/admin/email/:id', checkAuth, checkAdmin, deleteEmail);
-router.post('/api/admin/email/draft',
+router.delete('/admin/email/:id', checkAuth, checkAdmin, deleteEmail);
+router.post('/admin/email/draft',
     checkAuth,
     checkAdmin,
     body('subject').notEmpty().withMessage('Subject is required'),
     body('message').notEmpty().withMessage('Message is required'),
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+        next();
+    },
     saveDraft
 );
 router.post('/upload', upload.single('image'), (req, res) => {

@@ -1,0 +1,2085 @@
+"""
+✨ `DeliveryJob_KeyOutput` returns the primary key fields of table type `DeliveryJob`.
+
+It has the same format as `DeliveryJob_Key`, but is only used as mutation return value.
+"""
+scalar DeliveryJob_KeyOutput
+"""
+✨ `LocationHistory_KeyOutput` returns the primary key fields of table type `LocationHistory`.
+
+It has the same format as `LocationHistory_Key`, but is only used as mutation return value.
+"""
+scalar LocationHistory_KeyOutput
+"""
+✨ `Package_KeyOutput` returns the primary key fields of table type `Package`.
+
+It has the same format as `Package_Key`, but is only used as mutation return value.
+"""
+scalar Package_KeyOutput
+"""
+✨ `Review_KeyOutput` returns the primary key fields of table type `Review`.
+
+It has the same format as `Review_Key`, but is only used as mutation return value.
+"""
+scalar Review_KeyOutput
+"""
+✨ `User_KeyOutput` returns the primary key fields of table type `User`.
+
+It has the same format as `User_Key`, but is only used as mutation return value.
+"""
+scalar User_KeyOutput
+"""
+✨ Generated data input type for table 'DeliveryJob'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input DeliveryJob_Data {
+  """
+  ✨ Generated from Field `DeliveryJob`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `DeliveryJob`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DeliveryJob`.`courierId` of type `String`
+  """
+  courierId: String
+  """
+  ✨ `_expr` server value variant of `courierId` (✨ Generated from Field `DeliveryJob`.`courierId` of type `String`)
+  """
+  courierId_expr: String_Expr
+  """
+  ✨ Generated from Field `DeliveryJob`.`packageId` of type `UUID!`
+  """
+  packageId: UUID
+  """
+  ✨ `_expr` server value variant of `packageId` (✨ Generated from Field `DeliveryJob`.`packageId` of type `UUID!`)
+  """
+  packageId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DeliveryJob`.`courier` of type `User`
+  """
+  courier: User_Key
+  """
+  ✨ Generated from Field `DeliveryJob`.`package` of type `Package!`
+  """
+  package: Package_Key
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime` of type `Timestamp`
+  """
+  actualDeliveryTime: Timestamp
+  """
+  ✨ `_expr` server value variant of `actualDeliveryTime` (✨ Generated from Field `DeliveryJob`.`actualDeliveryTime` of type `Timestamp`)
+  """
+  actualDeliveryTime_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `actualDeliveryTime` (✨ Generated from Field `DeliveryJob`.`actualDeliveryTime` of type `Timestamp`)
+  """
+  actualDeliveryTime_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `actualDeliveryTime` (✨ Generated from Field `DeliveryJob`.`actualDeliveryTime` of type `Timestamp`)
+  """
+  actualDeliveryTime_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt` of type `Timestamp!`
+  """
+  assignedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `assignedAt` (✨ Generated from Field `DeliveryJob`.`assignedAt` of type `Timestamp!`)
+  """
+  assignedAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `assignedAt` (✨ Generated from Field `DeliveryJob`.`assignedAt` of type `Timestamp!`)
+  """
+  assignedAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `assignedAt` (✨ Generated from Field `DeliveryJob`.`assignedAt` of type `Timestamp!`)
+  """
+  assignedAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime` of type `Timestamp`
+  """
+  deliveryTime: Timestamp
+  """
+  ✨ `_expr` server value variant of `deliveryTime` (✨ Generated from Field `DeliveryJob`.`deliveryTime` of type `Timestamp`)
+  """
+  deliveryTime_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `deliveryTime` (✨ Generated from Field `DeliveryJob`.`deliveryTime` of type `Timestamp`)
+  """
+  deliveryTime_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `deliveryTime` (✨ Generated from Field `DeliveryJob`.`deliveryTime` of type `Timestamp`)
+  """
+  deliveryTime_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost` of type `Float`
+  """
+  finalCost: Float
+  """
+  ✨ `_expr` server value variant of `finalCost` (✨ Generated from Field `DeliveryJob`.`finalCost` of type `Float`)
+  """
+  finalCost_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `finalCost` (✨ Generated from Field `DeliveryJob`.`finalCost` of type `Float`)
+  """
+  finalCost_update: [Float_Update!]
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime` of type `Timestamp`
+  """
+  pickupTime: Timestamp
+  """
+  ✨ `_expr` server value variant of `pickupTime` (✨ Generated from Field `DeliveryJob`.`pickupTime` of type `Timestamp`)
+  """
+  pickupTime_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `pickupTime` (✨ Generated from Field `DeliveryJob`.`pickupTime` of type `Timestamp`)
+  """
+  pickupTime_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `pickupTime` (✨ Generated from Field `DeliveryJob`.`pickupTime` of type `Timestamp`)
+  """
+  pickupTime_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `DeliveryJob`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `DeliveryJob`.`status` of type `String!`)
+  """
+  status_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'DeliveryJob'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DeliveryJob_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [DeliveryJob_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: DeliveryJob_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [DeliveryJob_Filter!]
+  """
+  ✨ Generated from Field `DeliveryJob`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`courierId` of type `String`
+  """
+  courierId: String_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`packageId` of type `UUID!`
+  """
+  packageId: UUID_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`courier` of type `User`
+  """
+  courier: User_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`package` of type `Package!`
+  """
+  package: Package_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime` of type `Timestamp`
+  """
+  actualDeliveryTime: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt` of type `Timestamp!`
+  """
+  assignedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime` of type `Timestamp`
+  """
+  deliveryTime: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost` of type `Float`
+  """
+  finalCost: Float_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime` of type `Timestamp`
+  """
+  pickupTime: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`locationHistories_on_deliveryJob` of type `[LocationHistory!]!`
+  """
+  locationHistories_on_deliveryJob: LocationHistory_ListFilter
+  """
+  ✨ Generated from Field `DeliveryJob`.`reviews_on_deliveryJob` of type `[Review!]!`
+  """
+  reviews_on_deliveryJob: Review_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'DeliveryJob'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input DeliveryJob_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [DeliveryJob_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: DeliveryJob_Filter
+}
+"""
+✨ Generated having input type for table 'DeliveryJob'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DeliveryJob_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [DeliveryJob_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: DeliveryJob_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [DeliveryJob_Having!]
+  """
+  ✨ Generated from Field `DeliveryJob`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime_count` of type `Int!`
+  """
+  actualDeliveryTime_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt_count` of type `Int!`
+  """
+  assignedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`courierId_count` of type `Int!`
+  """
+  courierId_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime_count` of type `Int!`
+  """
+  deliveryTime_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_count` of type `Int!`
+  """
+  finalCost_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`packageId_count` of type `Int!`
+  """
+  packageId_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime_count` of type `Int!`
+  """
+  pickupTime_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_sum` of type `Float`
+  """
+  finalCost_sum: Float_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_avg` of type `Float`
+  """
+  finalCost_avg: Float_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime_min` of type `Timestamp`
+  """
+  actualDeliveryTime_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt_min` of type `Timestamp`
+  """
+  assignedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime_min` of type `Timestamp`
+  """
+  deliveryTime_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_min` of type `Float`
+  """
+  finalCost_min: Float_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime_min` of type `Timestamp`
+  """
+  pickupTime_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime_max` of type `Timestamp`
+  """
+  actualDeliveryTime_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt_max` of type `Timestamp`
+  """
+  assignedAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime_max` of type `Timestamp`
+  """
+  deliveryTime_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_max` of type `Float`
+  """
+  finalCost_max: Float_Filter
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime_max` of type `Timestamp`
+  """
+  pickupTime_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'DeliveryJob'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input DeliveryJob_Key {
+  """
+  ✨ Generated from Field `DeliveryJob`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `DeliveryJob`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'DeliveryJob'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input DeliveryJob_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: DeliveryJob_Filter
+}
+"""
+✨ Generated order input type for table 'DeliveryJob'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input DeliveryJob_Order {
+  """
+  ✨ Generated from Field `DeliveryJob`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`courierId` of type `String`
+  """
+  courierId: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`packageId` of type `UUID!`
+  """
+  packageId: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`courier` of type `User`
+  """
+  courier: User_Order
+  """
+  ✨ Generated from Field `DeliveryJob`.`package` of type `Package!`
+  """
+  package: Package_Order
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime` of type `Timestamp`
+  """
+  actualDeliveryTime: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt` of type `Timestamp!`
+  """
+  assignedAt: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime` of type `Timestamp`
+  """
+  deliveryTime: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost` of type `Float`
+  """
+  finalCost: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime` of type `Timestamp`
+  """
+  pickupTime: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime_count` of type `Int!`
+  """
+  actualDeliveryTime_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt_count` of type `Int!`
+  """
+  assignedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`courierId_count` of type `Int!`
+  """
+  courierId_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime_count` of type `Int!`
+  """
+  deliveryTime_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_count` of type `Int!`
+  """
+  finalCost_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`packageId_count` of type `Int!`
+  """
+  packageId_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime_count` of type `Int!`
+  """
+  pickupTime_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_sum` of type `Float`
+  """
+  finalCost_sum: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_avg` of type `Float`
+  """
+  finalCost_avg: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime_min` of type `Timestamp`
+  """
+  actualDeliveryTime_min: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt_min` of type `Timestamp`
+  """
+  assignedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime_min` of type `Timestamp`
+  """
+  deliveryTime_min: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_min` of type `Float`
+  """
+  finalCost_min: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime_min` of type `Timestamp`
+  """
+  pickupTime_min: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`actualDeliveryTime_max` of type `Timestamp`
+  """
+  actualDeliveryTime_max: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`assignedAt_max` of type `Timestamp`
+  """
+  assignedAt_max: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`deliveryTime_max` of type `Timestamp`
+  """
+  deliveryTime_max: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`finalCost_max` of type `Float`
+  """
+  finalCost_max: OrderDirection
+  """
+  ✨ Generated from Field `DeliveryJob`.`pickupTime_max` of type `Timestamp`
+  """
+  pickupTime_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'LocationHistory'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input LocationHistory_Data {
+  """
+  ✨ Generated from Field `LocationHistory`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `LocationHistory`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJobId` of type `UUID!`
+  """
+  deliveryJobId: UUID
+  """
+  ✨ `_expr` server value variant of `deliveryJobId` (✨ Generated from Field `LocationHistory`.`deliveryJobId` of type `UUID!`)
+  """
+  deliveryJobId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJob` of type `DeliveryJob!`
+  """
+  deliveryJob: DeliveryJob_Key
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude` of type `Float!`
+  """
+  latitude: Float
+  """
+  ✨ `_expr` server value variant of `latitude` (✨ Generated from Field `LocationHistory`.`latitude` of type `Float!`)
+  """
+  latitude_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `latitude` (✨ Generated from Field `LocationHistory`.`latitude` of type `Float!`)
+  """
+  latitude_update: [Float_Update!]
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude` of type `Float!`
+  """
+  longitude: Float
+  """
+  ✨ `_expr` server value variant of `longitude` (✨ Generated from Field `LocationHistory`.`longitude` of type `Float!`)
+  """
+  longitude_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `longitude` (✨ Generated from Field `LocationHistory`.`longitude` of type `Float!`)
+  """
+  longitude_update: [Float_Update!]
+  """
+  ✨ Generated from Field `LocationHistory`.`statusUpdate` of type `String`
+  """
+  statusUpdate: String
+  """
+  ✨ `_expr` server value variant of `statusUpdate` (✨ Generated from Field `LocationHistory`.`statusUpdate` of type `String`)
+  """
+  statusUpdate_expr: String_Expr
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp` of type `Timestamp!`
+  """
+  timestamp: Timestamp
+  """
+  ✨ `_expr` server value variant of `timestamp` (✨ Generated from Field `LocationHistory`.`timestamp` of type `Timestamp!`)
+  """
+  timestamp_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `timestamp` (✨ Generated from Field `LocationHistory`.`timestamp` of type `Timestamp!`)
+  """
+  timestamp_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `timestamp` (✨ Generated from Field `LocationHistory`.`timestamp` of type `Timestamp!`)
+  """
+  timestamp_update: [Timestamp_Update!]
+}
+"""
+✨ Generated filter input type for table 'LocationHistory'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input LocationHistory_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [LocationHistory_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: LocationHistory_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [LocationHistory_Filter!]
+  """
+  ✨ Generated from Field `LocationHistory`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJobId` of type `UUID!`
+  """
+  deliveryJobId: UUID_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJob` of type `DeliveryJob!`
+  """
+  deliveryJob: DeliveryJob_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude` of type `Float!`
+  """
+  latitude: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude` of type `Float!`
+  """
+  longitude: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`statusUpdate` of type `String`
+  """
+  statusUpdate: String_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp` of type `Timestamp!`
+  """
+  timestamp: Timestamp_Filter
+}
+"""
+✨ Generated first-row input type for table 'LocationHistory'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input LocationHistory_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [LocationHistory_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: LocationHistory_Filter
+}
+"""
+✨ Generated having input type for table 'LocationHistory'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input LocationHistory_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [LocationHistory_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: LocationHistory_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [LocationHistory_Having!]
+  """
+  ✨ Generated from Field `LocationHistory`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJobId_count` of type `Int!`
+  """
+  deliveryJobId_count: Int_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_count` of type `Int!`
+  """
+  latitude_count: Int_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_count` of type `Int!`
+  """
+  longitude_count: Int_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`statusUpdate_count` of type `Int!`
+  """
+  statusUpdate_count: Int_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp_count` of type `Int!`
+  """
+  timestamp_count: Int_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_sum` of type `Float`
+  """
+  latitude_sum: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_sum` of type `Float`
+  """
+  longitude_sum: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_avg` of type `Float`
+  """
+  latitude_avg: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_avg` of type `Float`
+  """
+  longitude_avg: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_min` of type `Float`
+  """
+  latitude_min: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_min` of type `Float`
+  """
+  longitude_min: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp_min` of type `Timestamp`
+  """
+  timestamp_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_max` of type `Float`
+  """
+  latitude_max: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_max` of type `Float`
+  """
+  longitude_max: Float_Filter
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp_max` of type `Timestamp`
+  """
+  timestamp_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'LocationHistory'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input LocationHistory_Key {
+  """
+  ✨ Generated from Field `LocationHistory`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `LocationHistory`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'LocationHistory'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input LocationHistory_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: LocationHistory_Filter
+}
+"""
+✨ Generated order input type for table 'LocationHistory'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input LocationHistory_Order {
+  """
+  ✨ Generated from Field `LocationHistory`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJobId` of type `UUID!`
+  """
+  deliveryJobId: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJob` of type `DeliveryJob!`
+  """
+  deliveryJob: DeliveryJob_Order
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude` of type `Float!`
+  """
+  latitude: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude` of type `Float!`
+  """
+  longitude: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`statusUpdate` of type `String`
+  """
+  statusUpdate: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp` of type `Timestamp!`
+  """
+  timestamp: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`deliveryJobId_count` of type `Int!`
+  """
+  deliveryJobId_count: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_count` of type `Int!`
+  """
+  latitude_count: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_count` of type `Int!`
+  """
+  longitude_count: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`statusUpdate_count` of type `Int!`
+  """
+  statusUpdate_count: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp_count` of type `Int!`
+  """
+  timestamp_count: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_sum` of type `Float`
+  """
+  latitude_sum: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_sum` of type `Float`
+  """
+  longitude_sum: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_avg` of type `Float`
+  """
+  latitude_avg: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_avg` of type `Float`
+  """
+  longitude_avg: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_min` of type `Float`
+  """
+  latitude_min: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_min` of type `Float`
+  """
+  longitude_min: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp_min` of type `Timestamp`
+  """
+  timestamp_min: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`latitude_max` of type `Float`
+  """
+  latitude_max: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`longitude_max` of type `Float`
+  """
+  longitude_max: OrderDirection
+  """
+  ✨ Generated from Field `LocationHistory`.`timestamp_max` of type `Timestamp`
+  """
+  timestamp_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Package'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Package_Data {
+  """
+  ✨ Generated from Field `Package`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Package`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Package`.`recipientId` of type `String`
+  """
+  recipientId: String
+  """
+  ✨ `_expr` server value variant of `recipientId` (✨ Generated from Field `Package`.`recipientId` of type `String`)
+  """
+  recipientId_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`senderId` of type `String`
+  """
+  senderId: String
+  """
+  ✨ `_expr` server value variant of `senderId` (✨ Generated from Field `Package`.`senderId` of type `String`)
+  """
+  senderId_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`recipient` of type `User`
+  """
+  recipient: User_Key
+  """
+  ✨ Generated from Field `Package`.`sender` of type `User`
+  """
+  sender: User_Key
+  """
+  ✨ Generated from Field `Package`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Package`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Package`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Package`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Package`.`deliveryAddress` of type `String!`
+  """
+  deliveryAddress: String
+  """
+  ✨ `_expr` server value variant of `deliveryAddress` (✨ Generated from Field `Package`.`deliveryAddress` of type `String!`)
+  """
+  deliveryAddress_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`description` of type `String!`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `Package`.`description` of type `String!`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`dimensions` of type `String!`
+  """
+  dimensions: String
+  """
+  ✨ `_expr` server value variant of `dimensions` (✨ Generated from Field `Package`.`dimensions` of type `String!`)
+  """
+  dimensions_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime` of type `Timestamp`
+  """
+  estimatedDeliveryTime: Timestamp
+  """
+  ✨ `_expr` server value variant of `estimatedDeliveryTime` (✨ Generated from Field `Package`.`estimatedDeliveryTime` of type `Timestamp`)
+  """
+  estimatedDeliveryTime_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `estimatedDeliveryTime` (✨ Generated from Field `Package`.`estimatedDeliveryTime` of type `Timestamp`)
+  """
+  estimatedDeliveryTime_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `estimatedDeliveryTime` (✨ Generated from Field `Package`.`estimatedDeliveryTime` of type `Timestamp`)
+  """
+  estimatedDeliveryTime_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Package`.`fragile` of type `Boolean`
+  """
+  fragile: Boolean
+  """
+  ✨ `_expr` server value variant of `fragile` (✨ Generated from Field `Package`.`fragile` of type `Boolean`)
+  """
+  fragile_expr: Boolean_Expr
+  """
+  ✨ Generated from Field `Package`.`pickupAddress` of type `String!`
+  """
+  pickupAddress: String
+  """
+  ✨ `_expr` server value variant of `pickupAddress` (✨ Generated from Field `Package`.`pickupAddress` of type `String!`)
+  """
+  pickupAddress_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`specialInstructions` of type `String`
+  """
+  specialInstructions: String
+  """
+  ✨ `_expr` server value variant of `specialInstructions` (✨ Generated from Field `Package`.`specialInstructions` of type `String`)
+  """
+  specialInstructions_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `Package`.`status` of type `String!`)
+  """
+  status_expr: String_Expr
+  """
+  ✨ Generated from Field `Package`.`weight` of type `Float!`
+  """
+  weight: Float
+  """
+  ✨ `_expr` server value variant of `weight` (✨ Generated from Field `Package`.`weight` of type `Float!`)
+  """
+  weight_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `weight` (✨ Generated from Field `Package`.`weight` of type `Float!`)
+  """
+  weight_update: [Float_Update!]
+}
+"""
+✨ Generated filter input type for table 'Package'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Package_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Package_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Package_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Package_Filter!]
+  """
+  ✨ Generated from Field `Package`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Package`.`recipientId` of type `String`
+  """
+  recipientId: String_Filter
+  """
+  ✨ Generated from Field `Package`.`senderId` of type `String`
+  """
+  senderId: String_Filter
+  """
+  ✨ Generated from Field `Package`.`recipient` of type `User`
+  """
+  recipient: User_Filter
+  """
+  ✨ Generated from Field `Package`.`sender` of type `User`
+  """
+  sender: User_Filter
+  """
+  ✨ Generated from Field `Package`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Package`.`deliveryAddress` of type `String!`
+  """
+  deliveryAddress: String_Filter
+  """
+  ✨ Generated from Field `Package`.`description` of type `String!`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `Package`.`dimensions` of type `String!`
+  """
+  dimensions: String_Filter
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime` of type `Timestamp`
+  """
+  estimatedDeliveryTime: Timestamp_Filter
+  """
+  ✨ Generated from Field `Package`.`fragile` of type `Boolean`
+  """
+  fragile: Boolean_Filter
+  """
+  ✨ Generated from Field `Package`.`pickupAddress` of type `String!`
+  """
+  pickupAddress: String_Filter
+  """
+  ✨ Generated from Field `Package`.`specialInstructions` of type `String`
+  """
+  specialInstructions: String_Filter
+  """
+  ✨ Generated from Field `Package`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `Package`.`weight` of type `Float!`
+  """
+  weight: Float_Filter
+  """
+  ✨ Generated from Field `Package`.`deliveryJobs_on_package` of type `[DeliveryJob!]!`
+  """
+  deliveryJobs_on_package: DeliveryJob_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Package'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Package_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Package_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Package_Filter
+}
+"""
+✨ Generated having input type for table 'Package'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Package_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Package_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Package_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Package_Having!]
+  """
+  ✨ Generated from Field `Package`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`deliveryAddress_count` of type `Int!`
+  """
+  deliveryAddress_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`dimensions_count` of type `Int!`
+  """
+  dimensions_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime_count` of type `Int!`
+  """
+  estimatedDeliveryTime_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`fragile_count` of type `Int!`
+  """
+  fragile_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`pickupAddress_count` of type `Int!`
+  """
+  pickupAddress_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`recipientId_count` of type `Int!`
+  """
+  recipientId_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`senderId_count` of type `Int!`
+  """
+  senderId_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`specialInstructions_count` of type `Int!`
+  """
+  specialInstructions_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`weight_count` of type `Int!`
+  """
+  weight_count: Int_Filter
+  """
+  ✨ Generated from Field `Package`.`weight_sum` of type `Float`
+  """
+  weight_sum: Float_Filter
+  """
+  ✨ Generated from Field `Package`.`weight_avg` of type `Float`
+  """
+  weight_avg: Float_Filter
+  """
+  ✨ Generated from Field `Package`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime_min` of type `Timestamp`
+  """
+  estimatedDeliveryTime_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Package`.`weight_min` of type `Float`
+  """
+  weight_min: Float_Filter
+  """
+  ✨ Generated from Field `Package`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime_max` of type `Timestamp`
+  """
+  estimatedDeliveryTime_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Package`.`weight_max` of type `Float`
+  """
+  weight_max: Float_Filter
+}
+"""
+✨ Generated key input type for table 'Package'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Package_Key {
+  """
+  ✨ Generated from Field `Package`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Package`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Package'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Package_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Package_Filter
+}
+"""
+✨ Generated order input type for table 'Package'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Package_Order {
+  """
+  ✨ Generated from Field `Package`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`recipientId` of type `String`
+  """
+  recipientId: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`senderId` of type `String`
+  """
+  senderId: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`recipient` of type `User`
+  """
+  recipient: User_Order
+  """
+  ✨ Generated from Field `Package`.`sender` of type `User`
+  """
+  sender: User_Order
+  """
+  ✨ Generated from Field `Package`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`deliveryAddress` of type `String!`
+  """
+  deliveryAddress: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`description` of type `String!`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`dimensions` of type `String!`
+  """
+  dimensions: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime` of type `Timestamp`
+  """
+  estimatedDeliveryTime: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`fragile` of type `Boolean`
+  """
+  fragile: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`pickupAddress` of type `String!`
+  """
+  pickupAddress: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`specialInstructions` of type `String`
+  """
+  specialInstructions: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`weight` of type `Float!`
+  """
+  weight: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`deliveryAddress_count` of type `Int!`
+  """
+  deliveryAddress_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`dimensions_count` of type `Int!`
+  """
+  dimensions_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime_count` of type `Int!`
+  """
+  estimatedDeliveryTime_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`fragile_count` of type `Int!`
+  """
+  fragile_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`pickupAddress_count` of type `Int!`
+  """
+  pickupAddress_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`recipientId_count` of type `Int!`
+  """
+  recipientId_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`senderId_count` of type `Int!`
+  """
+  senderId_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`specialInstructions_count` of type `Int!`
+  """
+  specialInstructions_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`weight_count` of type `Int!`
+  """
+  weight_count: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`weight_sum` of type `Float`
+  """
+  weight_sum: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`weight_avg` of type `Float`
+  """
+  weight_avg: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime_min` of type `Timestamp`
+  """
+  estimatedDeliveryTime_min: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`weight_min` of type `Float`
+  """
+  weight_min: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`estimatedDeliveryTime_max` of type `Timestamp`
+  """
+  estimatedDeliveryTime_max: OrderDirection
+  """
+  ✨ Generated from Field `Package`.`weight_max` of type `Float`
+  """
+  weight_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Review'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Review_Data {
+  """
+  ✨ Generated from Field `Review`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Review`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Review`.`courierId` of type `String`
+  """
+  courierId: String
+  """
+  ✨ `_expr` server value variant of `courierId` (✨ Generated from Field `Review`.`courierId` of type `String`)
+  """
+  courierId_expr: String_Expr
+  """
+  ✨ Generated from Field `Review`.`customerId` of type `String`
+  """
+  customerId: String
+  """
+  ✨ `_expr` server value variant of `customerId` (✨ Generated from Field `Review`.`customerId` of type `String`)
+  """
+  customerId_expr: String_Expr
+  """
+  ✨ Generated from Field `Review`.`deliveryJobId` of type `UUID!`
+  """
+  deliveryJobId: UUID
+  """
+  ✨ `_expr` server value variant of `deliveryJobId` (✨ Generated from Field `Review`.`deliveryJobId` of type `UUID!`)
+  """
+  deliveryJobId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Review`.`courier` of type `User`
+  """
+  courier: User_Key
+  """
+  ✨ Generated from Field `Review`.`customer` of type `User`
+  """
+  customer: User_Key
+  """
+  ✨ Generated from Field `Review`.`deliveryJob` of type `DeliveryJob!`
+  """
+  deliveryJob: DeliveryJob_Key
+  """
+  ✨ Generated from Field `Review`.`comment` of type `String`
+  """
+  comment: String
+  """
+  ✨ `_expr` server value variant of `comment` (✨ Generated from Field `Review`.`comment` of type `String`)
+  """
+  comment_expr: String_Expr
+  """
+  ✨ Generated from Field `Review`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Review`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Review`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Review`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Review`.`rating` of type `Int!`
+  """
+  rating: Int
+  """
+  ✨ `_expr` server value variant of `rating` (✨ Generated from Field `Review`.`rating` of type `Int!`)
+  """
+  rating_expr: Int_Expr
+  """
+  ✨ `_update` server value variant of `rating` (✨ Generated from Field `Review`.`rating` of type `Int!`)
+  """
+  rating_update: [Int_Update!]
+}
+"""
+✨ Generated filter input type for table 'Review'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Review_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Review_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Review_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Review_Filter!]
+  """
+  ✨ Generated from Field `Review`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Review`.`courierId` of type `String`
+  """
+  courierId: String_Filter
+  """
+  ✨ Generated from Field `Review`.`customerId` of type `String`
+  """
+  customerId: String_Filter
+  """
+  ✨ Generated from Field `Review`.`deliveryJobId` of type `UUID!`
+  """
+  deliveryJobId: UUID_Filter
+  """
+  ✨ Generated from Field `Review`.`courier` of type `User`
+  """
+  courier: User_Filter
+  """
+  ✨ Generated from Field `Review`.`customer` of type `User`
+  """
+  customer: User_Filter
+  """
+  ✨ Generated from Field `Review`.`deliveryJob` of type `DeliveryJob!`
+  """
+  deliveryJob: DeliveryJob_Filter
+  """
+  ✨ Generated from Field `Review`.`comment` of type `String`
+  """
+  comment: String_Filter
+  """
+  ✨ Generated from Field `Review`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Review`.`rating` of type `Int!`
+  """
+  rating: Int_Filter
+}
+"""
+✨ Generated first-row input type for table 'Review'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Review_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Review_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Review_Filter
+}
+"""
+✨ Generated having input type for table 'Review'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Review_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Review_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Review_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Review_Having!]
+  """
+  ✨ Generated from Field `Review`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`comment_count` of type `Int!`
+  """
+  comment_count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`courierId_count` of type `Int!`
+  """
+  courierId_count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`customerId_count` of type `Int!`
+  """
+  customerId_count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`deliveryJobId_count` of type `Int!`
+  """
+  deliveryJobId_count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`rating_count` of type `Int!`
+  """
+  rating_count: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`rating_sum` of type `Int`
+  """
+  rating_sum: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`rating_avg` of type `Float`
+  """
+  rating_avg: Float_Filter
+  """
+  ✨ Generated from Field `Review`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Review`.`rating_min` of type `Int`
+  """
+  rating_min: Int_Filter
+  """
+  ✨ Generated from Field `Review`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Review`.`rating_max` of type `Int`
+  """
+  rating_max: Int_Filter
+}
+"""
+✨ Generated key input type for table 'Review'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Review_Key {
+  """
+  ✨ Generated from Field `Review`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Review`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Review'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Review_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Review_Filter
+}
+"""
+✨ Generated order input type for table 'Review'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Review_Order {
+  """
+  ✨ Generated from Field `Review`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`courierId` of type `String`
+  """
+  courierId: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`customerId` of type `String`
+  """
+  customerId: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`deliveryJobId` of type `UUID!`
+  """
+  deliveryJobId: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`courier` of type `User`
+  """
+  courier: User_Order
+  """
+  ✨ Generated from Field `Review`.`customer` of type `User`
+  """
+  customer: User_Order
+  """
+  ✨ Generated from Field `Review`.`deliveryJob` of type `DeliveryJob!`
+  """
+  deliveryJob: DeliveryJob_Order
+  """
+  ✨ Generated from Field `Review`.`comment` of type `String`
+  """
+  comment: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`rating` of type `Int!`
+  """
+  rating: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`comment_count` of type `Int!`
+  """
+  comment_count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`courierId_count` of type `Int!`
+  """
+  courierId_count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`customerId_count` of type `Int!`
+  """
+  customerId_count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`deliveryJobId_count` of type `Int!`
+  """
+  deliveryJobId_count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`rating_count` of type `Int!`
+  """
+  rating_count: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`rating_sum` of type `Int`
+  """
+  rating_sum: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`rating_avg` of type `Float`
+  """
+  rating_avg: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`rating_min` of type `Int`
+  """
+  rating_min: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Review`.`rating_max` of type `Int`
+  """
+  rating_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'User'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input User_Data {
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`address` of type `String`
+  """
+  address: String
+  """
+  ✨ `_expr` server value variant of `address` (✨ Generated from Field `User`.`address` of type `String`)
+  """
+  address_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: String
+  """
+  ✨ `_expr` server value variant of `displayName` (✨ Generated from Field `User`.`displayName` of type `String!`)
+  """
+  displayName_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String
+  """
+  ✨ `_expr` server value variant of `email` (✨ Generated from Field `User`.`email` of type `String!`)
+  """
+  email_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`phoneNumber` of type `String`
+  """
+  phoneNumber: String
+  """
+  ✨ `_expr` server value variant of `phoneNumber` (✨ Generated from Field `User`.`phoneNumber` of type `String`)
+  """
+  phoneNumber_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: String
+  """
+  ✨ `_expr` server value variant of `photoUrl` (✨ Generated from Field `User`.`photoUrl` of type `String`)
+  """
+  photoUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`userType` of type `String!`
+  """
+  userType: String
+  """
+  ✨ `_expr` server value variant of `userType` (✨ Generated from Field `User`.`userType` of type `String!`)
+  """
+  userType_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`vehicleDetails` of type `String`
+  """
+  vehicleDetails: String
+  """
+  ✨ `_expr` server value variant of `vehicleDetails` (✨ Generated from Field `User`.`vehicleDetails` of type `String`)
+  """
+  vehicleDetails_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [User_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: User_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [User_Filter!]
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `User`.`address` of type `String`
+  """
+  address: String_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: String_Filter
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String_Filter
+  """
+  ✨ Generated from Field `User`.`phoneNumber` of type `String`
+  """
+  phoneNumber: String_Filter
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: String_Filter
+  """
+  ✨ Generated from Field `User`.`userType` of type `String!`
+  """
+  userType: String_Filter
+  """
+  ✨ Generated from Field `User`.`vehicleDetails` of type `String`
+  """
+  vehicleDetails: String_Filter
+  """
+  ✨ Generated from Field `User`.`deliveryJobs_on_courier` of type `[DeliveryJob!]!`
+  """
+  deliveryJobs_on_courier: DeliveryJob_ListFilter
+  """
+  ✨ Generated from Field `User`.`packages_on_recipient` of type `[Package!]!`
+  """
+  packages_on_recipient: Package_ListFilter
+  """
+  ✨ Generated from Field `User`.`packages_on_sender` of type `[Package!]!`
+  """
+  packages_on_sender: Package_ListFilter
+  """
+  ✨ Generated from Field `User`.`reviews_on_courier` of type `[Review!]!`
+  """
+  reviews_on_courier: Review_ListFilter
+  """
+  ✨ Generated from Field `User`.`reviews_on_customer` of type `[Review!]!`
+  """
+  reviews_on_customer: Review_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'User'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input User_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [User_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: User_Filter
+}
+"""
+✨ Generated having input type for table 'User'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [User_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: User_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [User_Having!]
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`address_count` of type `Int!`
+  """
+  address_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`phoneNumber_count` of type `Int!`
+  """
+  phoneNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`photoUrl_count` of type `Int!`
+  """
+  photoUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`userType_count` of type `Int!`
+  """
+  userType_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`vehicleDetails_count` of type `Int!`
+  """
+  vehicleDetails_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'User'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input User_Key {
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input User_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: User_Filter
+}
+"""
+✨ Generated order input type for table 'User'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input User_Order {
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `User`.`address` of type `String`
+  """
+  address: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: OrderDirection
+  """
+  ✨ Generated from Field `User`.`phoneNumber` of type `String`
+  """
+  phoneNumber: OrderDirection
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: OrderDirection
+  """
+  ✨ Generated from Field `User`.`userType` of type `String!`
+  """
+  userType: OrderDirection
+  """
+  ✨ Generated from Field `User`.`vehicleDetails` of type `String`
+  """
+  vehicleDetails: OrderDirection
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`address_count` of type `Int!`
+  """
+  address_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`phoneNumber_count` of type `Int!`
+  """
+  phoneNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`photoUrl_count` of type `Int!`
+  """
+  photoUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`userType_count` of type `Int!`
+  """
+  userType_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`vehicleDetails_count` of type `Int!`
+  """
+  vehicleDetails_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}

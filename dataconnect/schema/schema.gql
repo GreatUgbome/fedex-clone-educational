@@ -1,0 +1,54 @@
+type User @table {
+  id: String!
+  displayName: String!
+  email: String!
+  userType: String!
+  createdAt: Timestamp!
+  photoUrl: String
+  phoneNumber: String
+  address: String
+  vehicleDetails: String
+}
+
+type Package @table {
+  description: String!
+  weight: Float!
+  dimensions: String!
+  pickupAddress: String!
+  deliveryAddress: String!
+  status: String!
+  createdAt: Timestamp!
+  fragile: Boolean
+  specialInstructions: String
+  estimatedDeliveryTime: Timestamp
+  sender: User
+  recipient: User
+}
+
+type DeliveryJob @table {
+  package: Package!
+  courier: User
+  status: String!
+  assignedAt: Timestamp!
+  pickupTime: Timestamp
+  deliveryTime: Timestamp
+  actualDeliveryTime: Timestamp
+  finalCost: Float
+}
+
+type LocationHistory @table {
+  deliveryJob: DeliveryJob!
+  latitude: Float!
+  longitude: Float!
+  timestamp: Timestamp!
+  statusUpdate: String
+}
+
+type Review @table {
+  deliveryJob: DeliveryJob!
+  customer: User
+  courier: User
+  rating: Int!
+  createdAt: Timestamp!
+  comment: String
+}

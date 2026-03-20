@@ -1,0 +1,56 @@
+extend type DeliveryJob {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "DeliveryJob", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `DeliveryJob`.`courier`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  courierId: String @fdc_generated(from: "DeliveryJob.courier", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `DeliveryJob`.`package`. It must match the value of `Package`.`id`. See `@ref` for how to customize it.
+  """
+  packageId: UUID! @fdc_generated(from: "DeliveryJob.package", purpose: IMPLICIT_REF_FIELD)
+}
+extend type LocationHistory {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "LocationHistory", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `LocationHistory`.`deliveryJob`. It must match the value of `DeliveryJob`.`id`. See `@ref` for how to customize it.
+  """
+  deliveryJobId: UUID! @fdc_generated(from: "LocationHistory.deliveryJob", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Package {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Package", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Package`.`recipient`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  recipientId: String @fdc_generated(from: "Package.recipient", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Package`.`sender`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  senderId: String @fdc_generated(from: "Package.sender", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Review {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Review", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Review`.`courier`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  courierId: String @fdc_generated(from: "Review.courier", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Review`.`customer`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  customerId: String @fdc_generated(from: "Review.customer", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Review`.`deliveryJob`. It must match the value of `DeliveryJob`.`id`. See `@ref` for how to customize it.
+  """
+  deliveryJobId: UUID! @fdc_generated(from: "Review.deliveryJob", purpose: IMPLICIT_REF_FIELD)
+}

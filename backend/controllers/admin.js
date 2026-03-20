@@ -144,7 +144,7 @@ const createUser = async (req, res) => {
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'User already exists' });
     
-    const pass = password || 'password123'; // Default password if not provided
+    const pass = password || crypto.randomBytes(12).toString('hex'); // Secure default password
     const hashedPassword = await bcrypt.hash(pass, 10);
     const newUser = new User({ username, email, password: hashedPassword, role });
     await newUser.save();
@@ -194,7 +194,7 @@ const sendEmail = async (req, res) => {
     })) : [];
 
     const mailOptions = {
-        from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+        from: '"Shipping App Support" <support@demo.local>',
         to: email,
         subject: subject,
         // Use BASE_URL for links
@@ -236,7 +236,7 @@ const sendBulkEmail = async (req, res) => {
         })) : [];
 
         const mailOptions = {
-            from: '"FedEx CL Support" <fedex-cl@noreply.com>',
+        from: '"Shipping App Support" <support@demo.local>',
             bcc: emails,
             subject: subject,
             html: generateEmailTemplate(subject, message, 'Visit Dashboard', BASE_URL),

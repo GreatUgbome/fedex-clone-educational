@@ -15,6 +15,7 @@ const fs = require('fs');
 // Import Models
 const Shipment = require('./models/shipment');
 const Setting = require('./models/setting');
+const auditLogger = require('./middleware/auditLogger');
 
 // Initialize Firebase Admin
 try {
@@ -28,19 +29,40 @@ const app = express();
 app.set('trust proxy', 1); // Trust proxy for rate limiting
 const PORT = process.env.PORT || 5002;
 
-// Determine environment and base URL
-const isProduction = process.env.NODE_ENV === 'production' || process.env.FUNCTION_NAME;
+// Determine environment and base URL (K_SERVICE is the standard for Node 20+ on GCP)
+const isProduction = process.env.NODE_ENV === 'production' || process.env.FUNCTION_NAME || process.env.K_SERVICE;
 const BASE_URL = process.env.BASE_URL || (isProduction ? 'https://fedex-37e89.web.app' : `http://localhost:${PORT}`);
 
 console.log('🌍 Environment:', isProduction ? 'Production (Firebase)' : 'Development');
 console.log('🔗 Base URL:', BASE_URL);
 
+// Security Headers Middleware
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+});
+
 app.use(cors({ 
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*'
+    // Prevents cross-origin attacks by failing closed if environment variable is missing in prod
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : (isProduction ? BASE_URL : '*'),
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Helper to skip rate limiting for specific IPs (like localhost or your dev IP)
+const skipWhitelisted = (req) => {
+    const whitelistedIps = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
+    if (process.env.WHITELIST_IP) {
+        whitelistedIps.push(...process.env.WHITELIST_IP.split(',').map(ip => ip.trim()));
+    }
+    return whitelistedIps.includes(req.ip);
+};
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -49,12 +71,31 @@ const limiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' },
-    skip: (req, res) => {
-        const whitelistedIps = ['127.0.0.1', '::1']; // Add IPs to whitelist here
-        return whitelistedIps.includes(req.ip);
-    }
+    skip: skipWhitelisted
 });
 app.use('/api', limiter);
+
+// Strict Rate Limiting for Login
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 login requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many login attempts from this IP, please try again after 15 minutes.' },
+    skip: skipWhitelisted
+});
+app.use('/api/auth/login', loginLimiter);
+
+// Strict Rate Limiting for Account Creation & Recovery
+const authActionLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests for this action from this IP, please try again after 15 minutes.' },
+    skip: skipWhitelisted
+});
+app.use(['/api/auth/signup', '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/resend-verification'], authActionLimiter);
 
 // --- MongoDB Connection ---
 const connectDatabase = async () => {
@@ -67,8 +108,6 @@ const connectDatabase = async () => {
     
     try {
         await mongoose.connect(mongoUri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000,
         });
         console.log('✅ MongoDB connected successfully');
@@ -93,6 +132,9 @@ app.use((req, res, next) => {
     next();
 });
 
+// Automatically log non-GET API interactions
+app.use('/api', auditLogger);
+
 // Health Check Endpoint
 app.get('/health', (req, res) => {
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -101,6 +143,34 @@ app.get('/health', (req, res) => {
         database: dbStatus,
         timestamp: new Date().toISOString()
     });
+});
+
+// --- Avatar Upload Endpoint ---
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const dir = path.join(__dirname, 'uploads', 'avatars');
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, `${req.params.username}-${Date.now()}${path.extname(file.originalname)}`);
+    }
+});
+const upload = multer({ storage: storage });
+
+app.post('/api/profile/:username/avatar', upload.single('avatar'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const avatarUrl = `${BASE_URL}/uploads/avatars/${req.file.filename}`;
+    res.json({ message: 'Avatar uploaded successfully', avatarUrl });
+});
+
+app.get('/api/profile/:username/avatar', async (req, res) => {
+    // Mock response to prevent frontend errors if no DB integration exists yet
+    res.json({ avatarUrl: null });
 });
 
 const authRoutes = require('./routes/auth');
@@ -116,6 +186,7 @@ app.use('/api', shipmentRoutes);
 app.use('/api', userRoutes);
 
 exports.api = functions.https.onRequest(app);
+exports.app = app; // Export app for testing
 
 // Start server locally if not running in Cloud Functions
 if (require.main === module) {
@@ -140,7 +211,7 @@ async function seedDatabase() {
                 id: '123456789012',
                 status: 'Delivered',
                 statusDetail: 'Delivered to front porch',
-                service: 'FedEx Home Delivery',
+            service: 'Standard Home Delivery',
                 deliveryDate: 'Sunday, 9/24/2023',
                 weight: '4.5 lbs / 2.04 kgs',
                 destination: 'Austin, TX, US',
@@ -149,16 +220,16 @@ async function seedDatabase() {
                 recipient: 'Chukwuka U.',
                 timeline: [
                     { date: 'Sep 24, 2023 2:30 PM', status: 'Delivered', location: 'Austin, TX', icon: 'fa-check' },
-                    { date: 'Sep 24, 2023 8:00 AM', status: 'On FedEx vehicle for delivery', location: 'Austin, TX', icon: 'fa-truck' },
-                    { date: 'Sep 23, 2023 9:15 PM', status: 'Arrived at FedEx location', location: 'Austin, TX', icon: 'fa-warehouse' },
+                { date: 'Sep 24, 2023 8:00 AM', status: 'On vehicle for delivery', location: 'Austin, TX', icon: 'fa-truck' },
+                { date: 'Sep 23, 2023 9:15 PM', status: 'Arrived at sort facility', location: 'Austin, TX', icon: 'fa-warehouse' },
                     { date: 'Sep 22, 2023 4:00 PM', status: 'Picked up', location: 'Dallas, TX', icon: 'fa-box' }
                 ]
             });
             await Shipment.create({
                 id: '987654321098',
                 status: 'In Transit',
-                statusDetail: 'Arrived at FedEx location',
-                service: 'FedEx Ground',
+            statusDetail: 'Arrived at sort facility',
+            service: 'Ground Shipping',
                 deliveryDate: 'Estimated Tuesday, 9/26/2023',
                 weight: '12.0 lbs / 5.44 kgs',
                 destination: 'Seattle, WA, US',
@@ -166,8 +237,8 @@ async function seedDatabase() {
                 sender: 'Amazon Fulfillment',
                 recipient: 'Jane Doe',
                 timeline: [
-                    { date: 'Sep 25, 2023 10:00 AM', status: 'Arrived at FedEx location', location: 'Portland, OR', icon: 'fa-warehouse' },
-                    { date: 'Sep 24, 2023 6:30 PM', status: 'Departed FedEx location', location: 'Sacramento, CA', icon: 'fa-truck-moving' },
+                { date: 'Sep 25, 2023 10:00 AM', status: 'Arrived at sort facility', location: 'Portland, OR', icon: 'fa-warehouse' },
+                { date: 'Sep 24, 2023 6:30 PM', status: 'Departed sort facility', location: 'Sacramento, CA', icon: 'fa-truck-moving' },
                     { date: 'Sep 23, 2023 2:00 PM', status: 'Picked up', location: 'Los Angeles, CA', icon: 'fa-box' }
                 ]
             });

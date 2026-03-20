@@ -1,29 +1,20 @@
 // Force Firebase URL for production, localhost for local dev
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
-    ? 'http://localhost:5002' 
+    ? 'http://localhost:5002'
     : 'https://us-central1-fedex-37e89.cloudfunctions.net';
 
 console.log('API Base URL:', API_BASE_URL);
 
-// Example tracking data for demo
-const EXAMPLE_TRACKING = {
-    trackingNumber: '123456789012',
-    status: 'out_for_delivery',
-    statusText: 'Out for Delivery',
-    statusDetail: 'Package is out for delivery today',
-    service: 'FedEx Ground',
-    weight: '2.5 lbs',
-    estimatedDelivery: 'Today, 5:00 PM',
-    deliveryDate: 'Today, 5:00 PM',
-    destination: 'San Francisco, CA',
-    sender: 'Acme Corp, New York, NY',
-    recipient: 'John Doe, San Francisco, CA',
-    timeline: [
-        { date: new Date(), description: 'Out for delivery', location: 'San Francisco, CA' },
-        { date: new Date(Date.now() - 86400000), description: 'In transit', location: 'Los Angeles, CA' },
-        { date: new Date(Date.now() - 172800000), description: 'Picked up', location: 'New York, NY' }
-    ]
-};
+// Safe DOM Setters to prevent TypeErrors when elements don't exist on current page
+function safeSetText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text || '';
+}
+
+function safeSetClass(id, className) {
+    const el = document.getElementById(id);
+    if (el) el.className = className || '';
+}
 
 // Helper to get auth headers
 async function getAuthHeaders() {
@@ -41,20 +32,24 @@ async function getAuthHeaders() {
 
 // Enhanced tracking function
 async function trackPackage() {
-    const trackingNumber = document.getElementById('trackingInput').value.trim();
+    const trackingInput = document.getElementById('trackingInput');
+    if (!trackingInput) return;
+    
+    const trackingNumber = trackingInput.value.trim();
     const resultsSection = document.getElementById('resultsSection');
     const errorSection = document.getElementById('errorSection');
 
-    resultsSection.style.display = 'none';
-    errorSection.style.display = 'none';
+    if (resultsSection) resultsSection.style.display = 'none';
+    if (errorSection) errorSection.style.display = 'none';
 
     if (!trackingNumber) {
         showError('Please enter a tracking number');
         return;
     }
 
-    const originalValue = document.getElementById('trackingInput').value;
-    document.getElementById('trackingInput').value = 'Tracking...';
+    const originalValue = trackingInput.value;
+    trackingInput.value = 'Tracking...';
+    trackingInput.disabled = true; // Prevent spamming requests
     
     try {
         const response = await fetch(`${API_BASE_URL}/api/track/${trackingNumber}`, {
@@ -62,63 +57,88 @@ async function trackPackage() {
         });
         
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Tracking not found');
+            let errorMsg = 'Tracking not found';
+            try {
+                const errorData = await response.json();
+                // The rate limiter uses .error, while standard errors might use .message
+                errorMsg = errorData.error || errorData.message || errorMsg;
+            } catch (e) {
+                // Fallback if the response isn't JSON
+                if (response.status === 429) {
+                    errorMsg = 'Too many requests. Please try again later.';
+                }
+            }
+            throw new Error(errorMsg);
         }
 
         const packageData = await response.json();
         displayPackageInfo(packageData);
-        resultsSection.style.display = 'block';
+        if (resultsSection) resultsSection.style.display = 'block';
         hideError();
         
     } catch (error) {
         console.error('Track error:', error);
         showError(error.message || 'Could not track package. Please try again.');
     } finally {
-        document.getElementById('trackingInput').value = originalValue;
+        trackingInput.value = originalValue;
+        trackingInput.disabled = false; // Re-enable input
     }
 }
 
 // Enhanced package display
 function displayPackageInfo(pkg) {
-    document.getElementById('statusTitle').textContent = pkg.statusText || pkg.statusDetail || pkg.status;
-    document.getElementById('statusSubtitle').textContent = getStatusSubtitle(pkg.status);
-    document.getElementById('displayTracking').textContent = pkg.trackingNumber || pkg.id;
-    document.getElementById('displayService').textContent = pkg.service;
-    document.getElementById('displayDelivery').textContent = pkg.estimatedDelivery || pkg.deliveryDate;
+    safeSetText('statusTitle', pkg.statusText || pkg.statusDetail || pkg.status);
+    safeSetText('statusSubtitle', getStatusSubtitle(pkg.status));
+    safeSetText('displayTracking', pkg.trackingNumber || pkg.id);
+    safeSetText('displayService', pkg.service);
+    safeSetText('displayDelivery', pkg.estimatedDelivery || pkg.deliveryDate);
 
-    const statusIcon = document.getElementById('statusMainIcon');
-    statusIcon.className = getStatusIcon(pkg.status);
+    safeSetClass('statusMainIcon', getStatusIcon(pkg.status));
 
-    document.getElementById('infoTracking').textContent = pkg.trackingNumber || pkg.id;
-    document.getElementById('infoStatus').textContent = pkg.statusText || pkg.statusDetail || pkg.status;
-    document.getElementById('infoStatus').className = `status-badge ${pkg.status}`;
-    document.getElementById('infoService').textContent = pkg.service;
-    document.getElementById('infoWeight').textContent = pkg.weight;
-    document.getElementById('infoDelivery').textContent = pkg.estimatedDelivery || pkg.deliveryDate;
-    document.getElementById('infoDestination').textContent = pkg.destination;
+    safeSetText('infoTracking', pkg.trackingNumber || pkg.id);
+    safeSetText('infoStatus', pkg.statusText || pkg.statusDetail || pkg.status);
+    safeSetClass('infoStatus', `status-badge ${pkg.status}`);
+    safeSetText('infoService', pkg.service);
+    safeSetText('infoWeight', pkg.weight);
+    safeSetText('infoDelivery', pkg.estimatedDelivery || pkg.deliveryDate);
+    safeSetText('infoDestination', pkg.destination);
 
     const timeline = document.getElementById('timeline');
-    timeline.innerHTML = '';
+    if (timeline) {
+        timeline.innerHTML = '';
 
-    if (pkg.timeline && Array.isArray(pkg.timeline)) {
+        if (pkg.timeline && Array.isArray(pkg.timeline)) {
+        // Add Tailwind container classes to create the vertical line
+        timeline.className = 'relative border-l border-gray-200 dark:border-gray-700 ml-3 mt-4';
+
         pkg.timeline.forEach((event, index) => {
+            const isCurrent = index === 0;
             const timelineItem = document.createElement('div');
-            timelineItem.className = `timeline-item ${index === 0 ? 'current' : ''}`;
+            timelineItem.className = 'mb-8 ml-6';
+            
+            // Tailwind styles for timeline dots
+            const dotClass = isCurrent 
+                ? 'absolute flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full -left-2 ring-4 ring-white dark:ring-gray-900 dark:bg-blue-500'
+                : 'absolute flex items-center justify-center w-4 h-4 bg-gray-200 rounded-full -left-2 ring-4 ring-white dark:ring-gray-900 dark:bg-gray-700';
             
             timelineItem.innerHTML = `
-                <div class="timeline-date">${formatDate(event.date)}</div>
-                <div class="timeline-description">${event.description}</div>
-                <div class="timeline-location">${event.location}</div>
+                <span class="${dotClass}"></span>
+                <h3 class="flex items-center mb-1 text-lg font-semibold text-gray-900 dark:text-white">
+                    ${event.description || event.status}
+                    ${isCurrent ? '<span class="bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 ml-3">Latest</span>' : ''}
+                </h3>
+                <time class="block mb-2 text-sm font-normal leading-none text-gray-400 dark:text-gray-500">${formatDate(event.date)}</time>
+                <p class="text-base font-normal text-gray-500 dark:text-gray-400">${event.location || ''}</p>
             `;
             
             timeline.appendChild(timelineItem);
         });
+        }
     }
 
-    document.getElementById('senderInfo').textContent = pkg.sender;
-    document.getElementById('recipientInfo').textContent = pkg.recipient;
-    document.getElementById('destinationInfo').textContent = pkg.destination;
+    safeSetText('senderInfo', pkg.sender);
+    safeSetText('recipientInfo', pkg.recipient);
+    safeSetText('destinationInfo', pkg.destination);
 }
 
 // Get status icon
@@ -195,35 +215,33 @@ function closeModal(modalId) {
 // Service modal
 function showServiceModal(type) {
     const modal = document.getElementById('serviceModal');
-    const title = document.querySelector('#serviceModal .modal-title');
-    if (title) title.textContent = `${type} Service`;
+    const title = document.getElementById('serviceModalTitle');
+    if (title) title.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} Service`;
     if (modal) modal.style.display = 'block';
 }
 
 // Info modal
 function showInfoModal(info) {
     const modal = document.getElementById('infoModal');
-    if (modal) modal.style.display = 'block';
-}
-
-// Auth related
-function toggleAuthMode() {
-    const loginForm = document.getElementById('loginForm');
-    const signupForm = document.getElementById('signupForm');
-    if (loginForm && signupForm) {
-        const isLogin = loginForm.style.display !== 'none';
-        loginForm.style.display = isLogin ? 'none' : 'block';
-        signupForm.style.display = isLogin ? 'block' : 'none';
+    if (modal) {
+        const content = document.getElementById('infoContent');
+        if (content && info) content.textContent = info;
+        modal.style.display = 'block';
     }
 }
 
+// Core Auth stubs mapping to auth.js functions or handling default behaviors
 function handleAuth(e) {
     if (e) e.preventDefault();
-    console.log('Auth submitted');
+    if (typeof submitAuth === 'function') submitAuth(e);
 }
 
 function handleForgotPassword() {
-    alert('Password reset link sent to your email');
+    if (typeof showForgotPasswordForm === 'function') {
+        showForgotPasswordForm();
+    } else {
+        alert('Password reset link sent to your email');
+    }
 }
 
 function handleGoogleLogin() {
@@ -236,12 +254,23 @@ function handleLogout() {
 
 // Admin/Dashboard functions (stubs for now)
 function switchAdminView(view) {
-    console.log('Switch view to:', view);
     const navItems = document.querySelectorAll('.sidebar-item');
     navItems.forEach(item => item.classList.remove('active'));
     const navId = 'nav-' + view;
     const activeNav = document.getElementById(navId);
     if (activeNav) activeNav.classList.add('active');
+
+    // Hide all admin views
+    document.querySelectorAll('.admin-view').forEach(v => v.classList.add('hidden'));
+    
+    // Show selected view
+    const viewId = 'admin' + view.charAt(0).toUpperCase() + view.slice(1) + 'View';
+    const viewEl = document.getElementById(viewId);
+    if (viewEl) viewEl.classList.remove('hidden');
+
+    // Fetch data when switching tabs
+    if (view === 'shipments') fetchAdminShipments();
+    if (view === 'users') fetchAdminUsers();
 }
 
 function renderDashboard() {
@@ -256,28 +285,128 @@ function toggleMaintenanceMode() {
     console.log('Toggle maintenance mode');
 }
 
-function renderAdminTable() {
-    console.log('Rendering admin table');
+// Pagination & Search State variables
+let currentShipmentPage = 1;
+const shipmentsPerPage = 10;
+let currentSearchQuery = '';
+let totalShipmentPages = 1;
+let currentSortColumn = 'createdAt';
+let currentSortOrder = 'desc';
+
+async function fetchAdminShipments() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shipments?page=${currentShipmentPage}&limit=${shipmentsPerPage}&search=${encodeURIComponent(currentSearchQuery)}&sortBy=${currentSortColumn}&order=${currentSortOrder}`, {
+            headers: await getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to fetch shipments');
+        
+        const data = await response.json();
+        totalShipmentPages = data.totalPages;
+        renderAdminTable(data.shipments);
+    } catch (error) {
+        console.error('Error fetching admin shipments:', error);
+    }
+}
+
+function renderAdminTable(shipments = []) {
+    const tableBody = document.getElementById('adminTableBody') || document.getElementById('adminShipmentsTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+    
+    shipments.forEach(shipment => {
+        const row = document.createElement('tr');
+        row.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+        row.innerHTML = `
+            <td class="px-4 py-3 w-10">
+                <input type="checkbox" class="shipment-checkbox" value="${shipment.id}" onchange="updateBulkActionButtons()">
+            </td>
+            <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">${shipment.id}</td>
+            <td class="px-4 py-3">${shipment.status}</td>
+            <td class="hidden sm:table-cell px-4 py-3">${shipment.destination || shipment.recipient || ''}</td>
+            <td class="hidden sm:table-cell px-4 py-3">${shipment.estimatedDelivery || shipment.deliveryDate || ''}</td>
+            <td class="px-4 py-3 text-right">
+                <button onclick="openEditModal('${shipment.id}')" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    // Update pagination text indicator
+    const pageInfo = document.getElementById('shipmentPageInfo');
+    if (pageInfo) {
+        pageInfo.textContent = `Page ${currentShipmentPage} of ${totalShipmentPages || 1}`;
+    }
+
+    // Show/hide bulk action buttons based on selection
+    updateBulkActionButtons();
+}
+
+function updateBulkActionButtons() {
+    const checkedCount = document.querySelectorAll('.shipment-checkbox:checked').length;
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const bulkStatusBtn = document.getElementById('bulkStatusBtn');
+    
+    if (bulkDeleteBtn) bulkDeleteBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
+    if (bulkStatusBtn) bulkStatusBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
 }
 
 function sortShipments(col) {
-    console.log('Sort by:', col);
+    if (currentSortColumn === col) {
+        currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = col;
+        currentSortOrder = 'asc'; // Default to ascending on a new column
+    }
+    fetchAdminShipments();
 }
 
 function toggleSelectAll(cb) {
-    console.log('Toggle all:', cb.checked);
+    const checkboxes = document.querySelectorAll('.shipment-checkbox');
+    checkboxes.forEach(box => box.checked = cb.checked);
+    updateBulkActionButtons();
 }
 
 function toggleShipmentSelection(id) {
-    console.log('Toggle shipment:', id);
+    updateBulkActionButtons();
 }
 
 function sendSingleNotification(id) {
     console.log('Send notification for:', id);
 }
 
-function bulkDeleteShipments() {
-    console.log('Bulk delete');
+async function bulkDeleteShipments() {
+    const selectedCheckboxes = document.querySelectorAll('.shipment-checkbox:checked');
+    const ids = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+    if (ids.length === 0) {
+        showToast('Please select at least one shipment to delete', 'warning');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${ids.length} shipment(s)? This action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shipments/bulk`, {
+            method: 'DELETE',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ ids })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete shipments');
+        }
+
+        showToast(`Successfully deleted ${ids.length} shipment(s)`, 'success');
+        const selectAllCheckbox = document.getElementById('selectAllShipments');
+        if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        fetchAdminShipments(); // Refresh table
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        showToast(error.message, 'error');
+    }
 }
 
 function downloadCsvTemplate() {
@@ -300,6 +429,10 @@ function deleteShipment(id) {
 }
 
 function openEditModal(id) {
+    if (id) {
+        const editTrackingId = document.getElementById('editTrackingId');
+        if (editTrackingId) editTrackingId.value = id;
+    }
     openModal('adminEditModal');
 }
 
@@ -312,7 +445,12 @@ function saveEditedShipment() {
 }
 
 function changeShipmentPage(step) {
-    console.log('Change page by:', step);
+    const newPage = currentShipmentPage + step;
+    
+    if (newPage >= 1 && newPage <= totalShipmentPages) {
+        currentShipmentPage = newPage;
+        fetchAdminShipments();
+    }
 }
 
 function printManifest() {
@@ -325,29 +463,110 @@ function bulkChangeStatus() {
 }
 
 function searchShipments() {
-    console.log('Search shipments');
+    const searchInput = document.getElementById('searchShipmentsInput');
+    // Use target input if it exists, else look for any generic search input active
+    const val = searchInput ? searchInput.value : (document.querySelector('input[type="search"]')?.value || '');
+    
+    currentSearchQuery = val.trim();
+    currentShipmentPage = 1; // Reset to page 1 on search
+    fetchAdminShipments();
 }
 
 function filterShipmentsByService() {
     console.log('Filter by service');
 }
 
-function renderUsersTable() {
-    console.log('Render users');
+// User Pagination State
+let currentUserPage = 1;
+const usersPerPage = 10;
+let currentUserSearch = '';
+let totalUserPages = 1;
+
+async function fetchAdminUsers() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/users?page=${currentUserPage}&limit=${usersPerPage}&search=${encodeURIComponent(currentUserSearch)}`, {
+            headers: await getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to fetch users');
+        
+        const data = await response.json();
+        // Works natively with arrays or paginated JSON objects
+        const users = Array.isArray(data) ? data : (data.users || []);
+        totalUserPages = data.totalPages || 1;
+        renderUsersTable(users);
+    } catch (error) {
+        console.error('Error fetching admin users:', error);
+        showToast('Failed to load users', 'error');
+    }
+}
+
+function handleUserSearch() {
+    const searchInput = document.getElementById('userSearchInput');
+    currentUserSearch = searchInput ? searchInput.value.trim() : '';
+    currentUserPage = 1;
+    fetchAdminUsers();
+}
+
+function renderUsersTable(users = []) {
+    const tableBody = document.getElementById('adminUsersTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+    
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+        row.innerHTML = `
+            <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">${user._id || user.uid || 'N/A'}</td>
+            <td class="px-4 py-3">${user.username || user.name || 'Unknown'}</td>
+            <td class="hidden sm:table-cell px-4 py-3">${user.email || ''}</td>
+            <td class="px-4 py-3">
+                <span class="px-2 py-1 rounded text-xs font-medium ${user.admin || user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
+                    ${user.role || (user.admin ? 'Admin' : 'Customer')}
+                </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+                <button onclick="openUserModal('${user._id || user.uid}')" class="font-medium text-blue-600 dark:text-blue-500 hover:underline mr-3">Edit</button>
+                <button onclick="deleteUser('${user._id || user.uid}')" class="font-medium text-red-600 dark:text-red-500 hover:underline">Delete</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    const pageInfo = document.getElementById('userPageInfo');
+    if (pageInfo) {
+        pageInfo.textContent = `Page ${currentUserPage} of ${totalUserPages}`;
+    }
 }
 
 function toggleUserSelection(id) {
     console.log('Toggle user:', id);
 }
 
-function deleteUser(id) {
-    if (confirm('Delete this user?')) {
-        console.log('Deleted user:', id);
+async function deleteUser(id) {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/user/${id}`, {
+            method: 'DELETE',
+            headers: await getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to delete user');
+        
+        showToast('User deleted successfully', 'success');
+        fetchAdminUsers(); // Refresh table
+    } catch (error) {
+        console.error('Delete user error:', error);
+        showToast(error.message, 'error');
     }
 }
 
 function changeUserPage(step) {
-    console.log('Change user page by:', step);
+    const newPage = currentUserPage + step;
+    if (newPage >= 1 && newPage <= totalUserPages) {
+        currentUserPage = newPage;
+        fetchAdminUsers();
+    }
 }
 
 function renderLocationsTable() {
@@ -391,7 +610,30 @@ function resetToDefaults() {
 }
 
 function showToast(msg, type = 'info') {
-    console.log(type + ':', msg);
+    const containerId = 'toast-container';
+    let container = document.getElementById(containerId);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.className = 'fixed bottom-5 right-5 z-[9999] flex flex-col gap-3';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    
+    const colorClasses = {
+        success: 'bg-emerald-500',
+        warning: 'bg-amber-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500'
+    };
+    toast.className = `px-5 py-3 rounded shadow-md text-white transition-opacity duration-300 ${colorClasses[type] || colorClasses.info}`;
+    
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 function renderAuditLogsTable() {
@@ -424,16 +666,64 @@ function changeAuditPage(step) {
     console.log('Change audit page by:', step);
 }
 
-function exportAuditLogsToCSV() {
-    alert('Exporting audit logs to CSV');
+async function exportAuditLogsToCSV() {
+    try {
+        showToast('Preparing CSV download...', 'info');
+        const response = await fetch(`${API_BASE_URL}/api/audit-logs/export`, {
+            headers: await getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to export audit logs');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'audit_logs.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Export Error:', error);
+        showToast('Failed to download CSV', 'error');
+    }
 }
 
 function addTimelineEvent() {
     console.log('Add timeline event');
 }
 
-function applyBulkStatusUpdate() {
-    console.log('Apply bulk status update');
+async function applyBulkStatusUpdate() {
+    const selectedCheckboxes = document.querySelectorAll('.shipment-checkbox:checked');
+    const ids = Array.from(selectedCheckboxes).map(cb => cb.value);
+    const statusSelect = document.getElementById('bulkStatusSelect');
+    const status = statusSelect ? statusSelect.value : null;
+
+    if (ids.length === 0) {
+        showToast('Please select at least one shipment to update', 'warning');
+        return;
+    }
+    if (!status) {
+        showToast('Please select a valid status', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shipments/bulk-status`, {
+            method: 'PUT',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ ids, status })
+        });
+        if (!response.ok) throw new Error('Failed to update shipments');
+        
+        showToast(`Successfully updated ${ids.length} shipment(s)`, 'success');
+        closeModal('bulkStatusModal');
+        fetchAdminShipments(); // Refresh the table
+    } catch (error) {
+        console.error('Bulk update error:', error);
+        showToast(error.message || 'Failed to apply bulk update', 'error');
+    }
 }
 
 function cancelBulkImport() {
@@ -465,7 +755,9 @@ function downloadManifestPDF() {
 }
 
 function bulkImportInput(input) {
-    console.log('Bulk import file:', input.files[0]);
+    if (input && input.files && input.files[0]) {
+        showToast(`File ${input.files[0].name} read successfully`, 'info');
+    }
 }
 
 // Additional missing functions
@@ -497,10 +789,40 @@ function saveSettings() {
     showToast('Settings saved', 'success');
 }
 
-function saveShipment() {
-    console.log('Save shipment');
-    closeModal('adminEditModal');
-    showToast('Shipment saved', 'success');
+async function saveShipment() {
+    const trackingId = document.getElementById('editTrackingId')?.value;
+    const status = document.getElementById('editStatus')?.value;
+    const location = document.getElementById('editLocation')?.value;
+    const service = document.getElementById('editService')?.value;
+    const weight = document.getElementById('editWeight')?.value;
+    const deliveryDate = document.getElementById('editDate')?.value;
+
+    if (!trackingId) {
+        showToast('Tracking ID is required', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shipment/${trackingId}`, {
+            method: 'PUT',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ 
+                status, 
+                location, 
+                service, 
+                weight,
+                deliveryDate
+            })
+        });
+        if (!response.ok) throw new Error('Failed to update shipment');
+
+        showToast('Shipment updated successfully', 'success');
+        closeModal('adminEditModal');
+        fetchAdminShipments(); // Refresh table
+    } catch (error) {
+        console.error('Save shipment error:', error);
+        showToast(error.message, 'error');
+    }
 }
 
 function saveUser() {

@@ -23,6 +23,10 @@ jest.mock('firebase-functions', () => ({
 const mockSave = jest.fn();
 const mockFindOne = jest.fn();
 const mockDeleteOne = jest.fn();
+const mockSort = jest.fn().mockReturnThis();
+const mockLimit = jest.fn().mockReturnValue({ sort: mockSort });
+const mockSkip = jest.fn().mockReturnValue({ limit: mockLimit });
+const mockFind = jest.fn().mockReturnValue({ skip: mockSkip });
 
 class MockModel {
   constructor(data) { Object.assign(this, data); }
@@ -30,6 +34,7 @@ class MockModel {
   static findOne = mockFindOne;
   static deleteOne = mockDeleteOne;
   static countDocuments = jest.fn();
+  static find = mockFind;
   // Add other methods as needed
 }
 
@@ -107,5 +112,24 @@ describe('Shipment API', () => {
 
     expect(res.statusCode).toBe(404);
     expect(res.body).toHaveProperty('error');
+  });
+
+  test('GET /api/shipments - should return paginated list for admin with search params', async () => {
+    MockModel.countDocuments.mockResolvedValue(1);
+    mockSort.mockResolvedValue([{ id: '123456789012', status: 'Delivered' }]);
+
+    const res = await request(app)
+      .get('/api/shipments?page=1&limit=10&search=123&sortBy=createdAt&order=desc')
+      .set('Authorization', 'Bearer mock-token'); // Simulates valid admin token
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('shipments');
+    expect(res.body.shipments).toHaveLength(1);
+    expect(res.body.currentPage).toBe(1);
+    expect(res.body.totalPages).toBe(1);
+    expect(res.body.totalShipments).toBe(1);
+    
+    // Verify find was called (handling the search logic)
+    expect(mockFind).toHaveBeenCalled();
   });
 });
