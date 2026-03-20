@@ -1,9 +1,22 @@
+# Firebase App Hosting Configuration
 apiVersion: apphosting.googleapis.com/v1
 kind: Backend
 metadata:
-  name: fedex-api
+  name: api
 spec:
-  codebase:
-    sourceDirectory: backend
+  codeDir: backend
   runtime: nodejs20
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: MONGO_URI
+      value: ${MONGO_URI}
+    - name: EMAIL_USER
+      value: ${EMAIL_USER}
+    - name: EMAIL_PASS
+      value: ${EMAIL_PASS}
+    - name: BASE_URL
+      value: ${BASE_URL}
+    - name: ALLOWED_ORIGINS
+      value: ${ALLOWED_ORIGINS}
 
