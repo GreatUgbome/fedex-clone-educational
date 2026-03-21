@@ -1,4 +1,4 @@
-# FedEx Clone - Educational Shipping & Tracking Application
+# Shipping & Tracking Application Clone - Educational Purpose
 
 > 🚀 **[FIREBASE DEPLOYMENT](./FIREBASE_QUICK_START.md)** - Deploy in 10 minutes!
 > 
@@ -34,7 +34,7 @@ Deploy to Render.com
 
 ## What is This?
 
-A full-stack educational project demonstrating a FedEx-like shipment tracking and management system built with modern technologies.
+A full-stack educational project demonstrating a shipment tracking and management system built with modern technologies.
 
 ## Technology Stack
 

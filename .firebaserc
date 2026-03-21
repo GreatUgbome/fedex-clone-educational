@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "fedex-37e89"
+    "default": "courier-shipment-a85aa",
+    "defualt": "fedex-37e89"
   },
   "targets": {},
   "etags": {}

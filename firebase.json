@@ -1,6 +1,5 @@
 {
   "hosting": {
-    "site": "fedex-37e89",
     "public": "frontend",
     "ignore": [
       "firebase.json",
@@ -21,13 +20,5 @@
   "functions": {
     "source": "backend",
     "runtime": "nodejs20"
-  },
-  "emulators": {
-    "dataconnect": {
-      "dataDir": "dataconnect/.dataconnect/pgliteData"
-    }
-  },
-  "dataconnect": {
-    "source": "dataconnect"
   }
 }

@@ -1,10 +1,7 @@
 // Firebase Cloud Functions Entry Point
-// This file exports all Cloud Functions from server.js
+// This file explicitly exports only the Cloud Functions from server.js
 
-const { api, app } = require('./server');
+const { api } = require('./server');
 
 // Export the main API function for Firebase Cloud Functions
 exports.api = api;
-
-// Export app for testing
-exports.app = app;

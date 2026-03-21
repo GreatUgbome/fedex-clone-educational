@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FedEx - Tracking, Shipping, and Locations</title>
+    <title>QuickShip - Tracking, Shipping, and Locations</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -15,6 +15,24 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
+    <!-- Firebase Setup -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtf7qSfW4QtGaMu727VuIU6SngJCv0c5s",
+            authDomain: "courier-shipment-a85aa.firebaseapp.com",
+            projectId: "courier-shipment-a85aa",
+            storageBucket: "courier-shipment-a85aa.firebasestorage.app",
+            messagingSenderId: "328917734882",
+            appId: "1:328917734882:web:4a9bb4de8098738c8cd5bb"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        window.firebaseAuth = { auth };
+    </script>
 </head>
 <body class="bg-gray-50 flex flex-col min-h-screen relative">
 
@@ -113,7 +131,7 @@
     <div id="searchModal" class="hidden fixed inset-0 z-[60] modal-overlay flex justify-center items-center px-4">
         <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg overflow-hidden slide-down">
             <div class="p-4 border-b flex justify-between items-center">
-                <h3 class="font-bold text-lg text-gray-700">Search FedEx</h3>
+                <h3 class="font-bold text-lg text-gray-700">Search System</h3>
                 <button onclick="closeModal('searchModal')" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-6">
@@ -359,9 +377,9 @@
                                 <input type="text" id="shipmentSearchInput" onkeyup="handleShipmentSearch()" placeholder="Search by Tracking ID..." class="w-full border p-2 rounded focus:border-fedex-purple outline-none">
                                 <select id="shipmentServiceFilter" onchange="handleServiceFilter()" class="border p-2 rounded focus:border-fedex-purple outline-none text-sm text-gray-600">
                                     <option value="">All Services</option>
-                                    <option value="FedEx Ground">FedEx Ground</option>
-                                    <option value="FedEx Express">FedEx Express</option>
-                                    <option value="FedEx Home Delivery">FedEx Home Delivery</option>
+                                <option value="Standard Ground">Standard Ground</option>
+                                <option value="Express Shipping">Express Shipping</option>
+                                <option value="Home Delivery">Home Delivery</option>
                                 </select>
                             </div>
                         </div>
@@ -781,7 +799,7 @@
                 <div class="flex items-center space-x-8">
                     <!-- Logo -->
                     <a href="#" onclick="window.location.reload()" class="text-3xl font-bold italic tracking-tighter flex items-center">
-                        <span class="text-white">Fed</span><span class="text-fedex-orange">Ex</span>
+                        <span class="text-white">Quick</span><span class="text-fedex-orange">Ship</span>
                     </a>
                     <!-- Desktop Menu -->
                     <div class="hidden md:flex space-x-6 text-sm font-medium">
@@ -999,8 +1017,8 @@
             <!-- Promo Banner -->
             <div class="mt-12 bg-fedex-purple rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row items-center">
                 <div class="p-8 md:w-2/3 text-white">
-                    <h3 class="text-2xl font-bold mb-2">Save 40% on International Shipping</h3>
-                    <p class="mb-6 opacity-90">Open a personal account today and start saving on eligible FedEx Express services.</p>
+                    <h3 class="text-2xl font-bold mb-2">Save 40% on International Shipments</h3>
+                    <p class="mb-6 opacity-90">Open a personal account today and start saving on eligible express services.</p>
                     <button onclick="openModal('loginModal')" class="bg-white text-fedex-purple px-6 py-2 rounded font-bold hover:bg-gray-100 transition">Get Started</button>
                 </div>
                 <div class="md:w-1/3 h-full">
@@ -1017,7 +1035,7 @@
             <div>
                 <h5 class="font-bold uppercase mb-4 text-gray-400 tracking-wider">Company Information</h5>
                 <ul class="space-y-2 text-gray-300">
-                    <li><a href="#" onclick="showInfoModal('about')" class="hover:text-white hover:underline transition">About FedEx</a></li>
+                    <li><a href="#" onclick="showInfoModal('about')" class="hover:text-white hover:underline transition">About Us</a></li>
                     <li><a href="#" onclick="showInfoModal('careers')" class="hover:text-white hover:underline transition">Careers</a></li>
                     <li><a href="#" onclick="showInfoModal('international')" class="hover:text-white hover:underline transition">International</a></li>
                     <li><a href="#" onclick="showInfoModal('security')" class="hover:text-white hover:underline transition">Security</a></li>
@@ -1040,15 +1058,15 @@
             <div>
                 <h5 class="font-bold uppercase mb-4 text-gray-400 tracking-wider">Follow Us</h5>
                 <div class="flex space-x-4 text-2xl">
-                    <a href="https://www.facebook.com/FedEx/" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-facebook"></i></a>
-                    <a href="https://twitter.com/fedex" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
-                    <a href="https://www.instagram.com/fedex/" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
-                    <a href="https://www.linkedin.com/company/fedex" target="_blank" class="text-gray-400 hover:text-white transition"><i class="fab fa-linkedin"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-facebook"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-linkedin"></i></a>
                 </div>
             </div>
         </div>
         <div class="max-w-7xl mx-auto px-4 mt-8 pt-8 border-t border-gray-700 text-xs text-center md:text-left text-gray-500 flex flex-col md:flex-row justify-between">
-            <p>&copy; FedEx 1995-2025. This is an educational clone for demonstration.</p>
+            <p>&copy; QuickShip 2025. This is an educational application for demonstration.</p>
             <div class="mt-2 md:mt-0 space-x-4">
                 <a href="#" class="hover:underline">Privacy Policy</a>
                 <a href="#" class="hover:underline">Terms of Use</a>
