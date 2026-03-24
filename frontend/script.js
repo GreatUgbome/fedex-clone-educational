@@ -1,7 +1,7 @@
 // Force Firebase URL for production, localhost for local dev
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
     ? 'http://localhost:5002'
-    : 'https://us-central1-fedex-37e89.cloudfunctions.net';
+    : ''; // Empty string uses relative paths, routing through Firebase rewrites automatically
 
 console.log('API Base URL:', API_BASE_URL);
 
