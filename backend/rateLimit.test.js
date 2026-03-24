@@ -1,5 +1,7 @@
 const request = require('supertest');
 
+jest.mock('./middleware/auditLogger', () => (req, res, next) => next());
+
 // --- Mocks Setup ---
 jest.mock('firebase-admin', () => ({
     initializeApp: jest.fn(),
@@ -10,13 +12,20 @@ jest.mock('firebase-functions', () => ({
 }));
 
 // Mock Mongoose Models to prevent database errors during tests
+class MockSchema {}
+MockSchema.Types = { Mixed: 'Mixed', ObjectId: 'ObjectId' };
+
 jest.mock('mongoose', () => ({
     connect: jest.fn().mockResolvedValue({}),
     connection: { readyState: 1 },
-    model: jest.fn(() => ({
-        findOne: jest.fn().mockResolvedValue(null)
-    })),
-    Schema: class {}
+    model: jest.fn(() => {
+        return class MockModel {
+            constructor() {}
+            save() { return Promise.resolve(); }
+            static findOne() { return Promise.resolve(null); }
+        };
+    }),
+    Schema: MockSchema
 }));
 
 const { app } = require('./server');

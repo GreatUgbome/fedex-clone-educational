@@ -2,9 +2,10 @@ const { checkAuth, checkAdmin } = require('./auth');
 const admin = require('firebase-admin');
 
 // Mock Firebase Admin
+const mockVerifyIdToken = jest.fn();
 jest.mock('firebase-admin', () => ({
     auth: () => ({
-        verifyIdToken: jest.fn()
+        verifyIdToken: mockVerifyIdToken
     })
 }));
 
@@ -39,7 +40,7 @@ describe('Authentication Middleware', () => {
         test('should set req.user and call next if token is valid', async () => {
             req.headers.authorization = 'Bearer valid-firebase-token';
             const mockDecodedToken = { uid: '12345', email: 'test@fedex.com' };
-            admin.auth().verifyIdToken.mockResolvedValue(mockDecodedToken);
+            mockVerifyIdToken.mockResolvedValue(mockDecodedToken);
             
             await checkAuth(req, res, next);
             
@@ -49,7 +50,7 @@ describe('Authentication Middleware', () => {
 
         test('should return 401 if token verification fails', async () => {
             req.headers.authorization = 'Bearer invalid-token';
-            admin.auth().verifyIdToken.mockRejectedValue(new Error('Token expired'));
+            mockVerifyIdToken.mockRejectedValue(new Error('Token expired'));
             
             await checkAuth(req, res, next);
             expect(res.status).toHaveBeenCalledWith(401);

@@ -3,6 +3,16 @@ const request = require('supertest');
 // --- Mocks Setup ---
 // Must be defined before requiring the server
 
+jest.mock('./middleware/auth', () => ({
+    checkAuth: (req, res, next) => {
+        req.user = { uid: '12345', email: 'admin@demo.com', role: 'admin' };
+        next();
+    },
+    checkAdmin: (req, res, next) => next()
+}));
+
+jest.mock('./middleware/auditLogger', () => (req, res, next) => next());
+
 // Mock Firebase Admin
 jest.mock('firebase-admin', () => ({
   initializeApp: jest.fn(),
@@ -35,6 +45,7 @@ class MockModel {
   static deleteOne = mockDeleteOne;
   static countDocuments = jest.fn();
   static find = mockFind;
+  static create = jest.fn().mockResolvedValue({});
   // Add other methods as needed
 }
 
@@ -88,7 +99,7 @@ describe('Shipment API', () => {
       .send({ status: 'created' }); // No ID
 
     expect(res.statusCode).toBe(400);
-    expect(res.body).toHaveProperty('error', 'Tracking ID is required');
+    expect(res.body.errors[0]).toHaveProperty('msg', 'Tracking ID is required');
   });
 
   test('GET /api/track/:id - should return shipment details if found', async () => {

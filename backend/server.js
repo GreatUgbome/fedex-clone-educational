@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
@@ -179,7 +179,7 @@ const mainRoutes = require('./routes/main');
 const shipmentRoutes = require('./routes/shipment');
 const userRoutes = require('./routes/user');
 
-app.use('/api', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', mainRoutes);
 app.use('/api', shipmentRoutes);

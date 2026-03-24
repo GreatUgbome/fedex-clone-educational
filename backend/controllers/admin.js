@@ -4,10 +4,11 @@ const Activity = require('../models/activity');
 const Email = require('../models/email');
 const Location = require('../models/location');
 const { generateEmailTemplate, transporter } = require('../utils/email');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 require('dotenv').config();
 
-const BASE_URL = process.env.BASE_URL || (process.env.RENDER ? 'https://fedex-37e89.web.app' : `http://localhost:5002}`);
+const BASE_URL = process.env.BASE_URL || (process.env.RENDER ? 'https://courier-shipment-a85aa.web.app' : `http://localhost:5002`);
 
 const getPackages = async (req, res) => {
     const packages = await Shipment.find({});

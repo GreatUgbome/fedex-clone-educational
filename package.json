@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "Shipping Clone - Educational Application",
   "private": true,
-  "workspaces": [
-    "backend"
-  ],
   "scripts": {
     "start": "cd backend && npm start",
     "dev": "cd backend && npm run dev",

@@ -1,10 +1,15 @@
 const request = require('supertest');
 
 // Mock nodemailer to prevent actual emails from being dispatched
-const mockSendMail = jest.fn().mockResolvedValue({ messageId: 'mock-message-id' });
+const mockSendMail = jest.fn((options, callback) => {
+    if (callback) callback(null, { messageId: 'mock-message-id' });
+    return Promise.resolve({ messageId: 'mock-message-id' });
+});
 jest.mock('nodemailer', () => ({
     createTransport: jest.fn().mockReturnValue({ sendMail: mockSendMail })
 }));
+
+jest.mock('./middleware/auditLogger', () => (req, res, next) => next());
 
 // Setup Firebase mocks before importing the app
 jest.mock('firebase-admin', () => ({
@@ -23,16 +28,20 @@ jest.mock('firebase-functions', () => ({
 }));
 
 // Mock Mongoose to prevent actual database connections
+class MockSchema {}
+MockSchema.Types = { Mixed: 'Mixed', ObjectId: 'ObjectId' };
+
 jest.mock('mongoose', () => {
     const mockModel = { 
         countDocuments: jest.fn().mockResolvedValue(0),
-        find: jest.fn().mockResolvedValue([{ email: 'testuser@fedex.com' }]) // Allow user fetching
+        find: jest.fn().mockResolvedValue([{ email: 'testuser@fedex.com' }]), // Allow user fetching
+        create: jest.fn().mockResolvedValue({})
     };
     return {
         connect: jest.fn().mockResolvedValue({}),
         connection: { readyState: 1 },
         model: jest.fn(() => mockModel),
-        Schema: class {}
+        Schema: MockSchema
     };
 });
 

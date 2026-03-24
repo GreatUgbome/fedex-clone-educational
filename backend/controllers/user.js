@@ -1,7 +1,7 @@
 const User = require('../models/user');
 const Shipment = require('../models/shipment');
 const Activity = require('../models/activity');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { logActivity } = require('../utils/activity');
 
 const getProfile = async (req, res) => {
