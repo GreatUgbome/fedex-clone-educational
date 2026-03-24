@@ -16,10 +16,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20' # Matches the nodejs20 runtime in firebase.json
+          cache: 'npm'
+          cache-dependency-path: './backend/package-lock.json'
 
       - name: Install Backend Dependencies
         working-directory: ./backend
-        run: npm install
+        run: npm ci
 
       # Optional: Run backend tests if you have them configured
       - name: Run Tests
@@ -33,4 +35,4 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         # Deploys both hosting and functions
-        run: firebase deploy --token $FIREBASE_TOKEN --non-interactive
+        run: firebase deploy --project courier-shipment-a85aa --token $FIREBASE_TOKEN --non-interactive

@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const User = require('../models/user');
 
 const checkAuth = async (req, res, next) => {
     try {
@@ -27,12 +28,20 @@ const checkAdmin = async (req, res, next) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Rely solely on Firebase Custom Claims
+    // Check Firebase Custom Claims first
     if (req.user.admin === true) {
-        next();
-    } else {
-        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+        return next();
     }
+
+    // Fallback: Check MongoDB User Role
+    try {
+        const dbUser = await User.findOne({ email: req.user.email });
+        if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'Admin')) {
+            return next();
+        }
+    } catch (error) {}
+
+    return res.status(403).json({ error: 'Forbidden: Admin access required' });
 };
 
 module.exports = { checkAuth, checkAdmin };

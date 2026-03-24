@@ -9,6 +9,10 @@ jest.mock('firebase-admin', () => ({
     })
 }));
 
+jest.mock('../models/user', () => ({
+    findOne: jest.fn().mockResolvedValue(null)
+}));
+
 describe('Authentication Middleware', () => {
     let req, res, next;
 
